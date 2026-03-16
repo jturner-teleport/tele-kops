@@ -145,3 +145,8 @@ spec:
   role: Node
   subnets:
   - ${AWS_AZ}
+  # Allow pods to reach EC2 IMDS for IAM credentials (e.g. Teleport → DynamoDB).
+  # AWS defaults to hop limit 1 (instance only); pods need limit 2.
+  instanceMetadata:
+    httpPutResponseHopLimit: 2
+    httpTokens: required

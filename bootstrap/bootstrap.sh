@@ -191,6 +191,7 @@ KOPS_POLICY=$(cat <<POLICY
         "ec2:DisassociateVpcCidrBlock",
         "ec2:ImportKeyPair",
         "ec2:ModifyInstanceAttribute",
+        "ec2:ModifyInstanceMetadataOptions",
         "ec2:ModifyLaunchTemplate",
         "ec2:ModifySubnetAttribute",
         "ec2:ModifyVpcAttribute",
