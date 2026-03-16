@@ -364,6 +364,7 @@ KOPS_POLICY=$(cat <<POLICY
         "s3:GetBucketLocation",
         "s3:GetEncryptionConfiguration",
         "s3:GetObject",
+        "s3:GetObjectAcl",
         "s3:ListBucket",
         "s3:PutObject"
       ],

@@ -98,12 +98,13 @@ kops update cluster \
 # so we poll until kops can write a kubeconfig with a real endpoint.
 log "Waiting for API server endpoint to be registered..."
 ATTEMPTS=0
-until kops export kubeconfig \
+while kops export kubeconfig \
     --name="${CLUSTER_NAME}" \
     --state="${KOPS_STATE_STORE}" \
-    --admin 2>&1 | grep -qv "no external API endpoints"; do
+    --admin 2>&1 | grep -q "no external API endpoints"; do
   ATTEMPTS=$((ATTEMPTS + 1))
   [[ $ATTEMPTS -ge 24 ]] && fail "Timed out waiting for API server endpoint (6 min)"
+  log "  (attempt ${ATTEMPTS}/24, retrying in 15s...)"
   sleep 15
 done
 

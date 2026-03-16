@@ -1,6 +1,6 @@
-# jturner-teleport
+# Teleport k0ps cluster
 
-Self-hosted [Teleport](https://goteleport.com) OSS on a cost-effective kops Kubernetes cluster in AWS (us-east-1). Includes full lifecycle management — spin up, spin down, pause, resume — with optional GitHub Actions scheduling for automated 9am–7pm weekday operation.
+Self-hosted [Teleport](https://goteleport.com) OSS on a cost-effective [k0ps](https://kops.sigs.k8s.io/getting_started/install/) Kubernetes cluster in AWS (us-east-1). Includes full lifecycle management — spin up, spin down, pause, resume — with optional GitHub Actions scheduling for automated 9am–7pm weekday operation.
 
 ## Cost Estimates
 

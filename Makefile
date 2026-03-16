@@ -1,4 +1,4 @@
-.PHONY: bootstrap up down pause resume delete
+.PHONY: bootstrap up down pause resume delete clean-cluster
 
 ## bootstrap  Run once to create S3 buckets and DynamoDB tables
 bootstrap:
@@ -20,9 +20,13 @@ pause:
 resume:
 	@bash scripts/resume.sh
 
-## delete     Nuclear teardown: removes cluster AND all persistent data (S3, DynamoDB)
+## delete        Nuclear teardown: removes cluster AND all persistent data (S3, DynamoDB)
 delete:
 	@bash scripts/delete.sh
+
+## clean-cluster  Delete orphaned EC2 resources when make up fails (preserves data)
+clean-cluster:
+	@bash scripts/clean-cluster.sh
 
 ## help       Show this help
 help:
