@@ -277,6 +277,7 @@ KOPS_POLICY=$(cat <<POLICY
         "iam:GetRole",
         "iam:GetInstanceProfile",
         "iam:GetRolePolicy",
+        "iam:GetOpenIDConnectProvider",
         "iam:ListOpenIDConnectProviders",
         "iam:ListRoles",
         "iam:ListInstanceProfiles",
