@@ -115,48 +115,40 @@ else
     --yes \
     --admin
 
-  # ── Fix ELB health check (SSL→TCP) ────────────────────────────────────────
-  # kops creates the Classic ELB with an SSL:443 health check. Kubernetes 1.30+
-  # dropped support for the TLS ciphers/versions used by the Classic ELB health
-  # checker, so it never flips InService. TCP:443 just verifies TCP connectivity.
-  API_ELB_NAME=$(aws elb describe-load-balancers \
-    --query "LoadBalancerDescriptions[?contains(LoadBalancerName,'api-${PREFIX}')].LoadBalancerName" \
-    --output text 2>/dev/null || true)
-  if [[ -n "${API_ELB_NAME}" ]]; then
-    log "Patching ELB health check to TCP:443 (SSL incompatible with k8s 1.30+)..."
-    aws elb configure-health-check \
-      --load-balancer-name "${API_ELB_NAME}" \
-      --health-check "Target=TCP:443,Interval=10,Timeout=5,UnhealthyThreshold=2,HealthyThreshold=2" \
-      > /dev/null
-  fi
 fi
 
-# ── Wait for API ELB to be InService, then patch kubeconfig directly ───────────
-# kops export kubeconfig checks for InService ELB instances but reliably fails
-# to detect them from within this script. Instead, poll AWS directly and set
-# the kubeconfig server ourselves — kops update already wrote the correct CA.
-log "Waiting for API server ELB to be InService..."
+# ── Wait for API NLB to be healthy, then patch kubeconfig directly ─────────────
+# kops export kubeconfig checks for healthy NLB targets but reliably fails to
+# detect them from within this script. Instead, poll AWS directly via elbv2 and
+# set the kubeconfig server ourselves — kops update already wrote the correct CA.
+log "Waiting for API server NLB to be healthy..."
 ATTEMPTS=0
 API_ELB_DNS=""
 while true; do
-  LB_INFO=$(aws elb describe-load-balancers \
-    --query "LoadBalancerDescriptions[?contains(LoadBalancerName,'api-${PREFIX}')].[LoadBalancerName,DNSName]" \
+  NLB_INFO=$(aws elbv2 describe-load-balancers \
+    --query "LoadBalancers[?contains(LoadBalancerName,'api-${PREFIX}')].[LoadBalancerArn,DNSName]" \
     --output text 2>/dev/null || true)
-  if [[ -n "${LB_INFO}" ]]; then
-    API_ELB_NAME=$(echo "${LB_INFO}" | awk '{print $1}')
-    API_ELB_DNS=$(echo "${LB_INFO}" | awk '{print $2}')
-    HEALTHY=$(aws elb describe-instance-health \
-      --load-balancer-name "${API_ELB_NAME}" \
-      --query 'InstanceStates[?State==`InService`].InstanceId' \
+  if [[ -n "${NLB_INFO}" ]]; then
+    NLB_ARN=$(echo "${NLB_INFO}" | awk '{print $1}')
+    API_ELB_DNS=$(echo "${NLB_INFO}" | awk '{print $2}')
+    TG_ARN=$(aws elbv2 describe-target-groups \
+      --load-balancer-arn "${NLB_ARN}" \
+      --query 'TargetGroups[0].TargetGroupArn' \
       --output text 2>/dev/null || true)
-    if [[ -n "${HEALTHY}" ]]; then
-      log "API server ELB InService: ${API_ELB_DNS}"
-      kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${API_ELB_DNS}"
-      break
+    if [[ -n "${TG_ARN}" && "${TG_ARN}" != "None" ]]; then
+      HEALTHY=$(aws elbv2 describe-target-health \
+        --target-group-arn "${TG_ARN}" \
+        --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].Target.Id' \
+        --output text 2>/dev/null || true)
+      if [[ -n "${HEALTHY}" ]]; then
+        log "API server NLB healthy: ${API_ELB_DNS}"
+        kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${API_ELB_DNS}"
+        break
+      fi
     fi
   fi
   ATTEMPTS=$((ATTEMPTS + 1))
-  [[ $ATTEMPTS -ge 36 ]] && fail "Timed out waiting for API server ELB to be InService (9 min)"
+  [[ $ATTEMPTS -ge 36 ]] && fail "Timed out waiting for API server NLB to be healthy (9 min)"
   log "  (attempt ${ATTEMPTS}/36, retrying in 15s...)"
   sleep 15
 done

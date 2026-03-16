@@ -19,6 +19,7 @@ spec:
   api:
     loadBalancer:
       type: Public
+      class: Network
   authorization:
     rbac: {}
   channel: stable
