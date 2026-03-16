@@ -42,11 +42,6 @@ for cmd in kops kubectl helm aws envsubst; do
   command -v "$cmd" &>/dev/null || fail "Missing required tool: ${cmd}"
 done
 
-if [[ -z "${AWS_ACCOUNT_ID:-}" ]]; then
-  AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-  export AWS_ACCOUNT_ID
-fi
-
 AWS_AZ="${AWS_AZ:-${AWS_REGION}a}"
 export AWS_AZ
 
@@ -112,28 +107,28 @@ else
     done
   fi
 
-  # ── Provision AWS infrastructure ────────────────────────────────────────────
+  # ── Provision AWS infrastructure ──────────────────────────────────────────
   log "Provisioning infrastructure (~5 min)..."
   kops update cluster \
     --name="${CLUSTER_NAME}" \
     --state="${KOPS_STATE_STORE}" \
     --yes \
     --admin
-fi
 
-# ── Fix ELB health check (SSL→TCP) ────────────────────────────────────────────
-# kops creates the Classic ELB with an SSL:443 health check. Kubernetes 1.30+
-# dropped support for the TLS ciphers/versions used by the Classic ELB health
-# checker, so it never flips InService. TCP:443 just verifies TCP connectivity.
-API_ELB_NAME=$(aws elb describe-load-balancers \
-  --query "LoadBalancerDescriptions[?contains(LoadBalancerName,'api-${PREFIX}')].LoadBalancerName" \
-  --output text 2>/dev/null || true)
-if [[ -n "${API_ELB_NAME}" ]]; then
-  log "Patching ELB health check to TCP:443 (SSL incompatible with k8s 1.30+)..."
-  aws elb configure-health-check \
-    --load-balancer-name "${API_ELB_NAME}" \
-    --health-check "Target=TCP:443,Interval=10,Timeout=5,UnhealthyThreshold=2,HealthyThreshold=2" \
-    > /dev/null
+  # ── Fix ELB health check (SSL→TCP) ────────────────────────────────────────
+  # kops creates the Classic ELB with an SSL:443 health check. Kubernetes 1.30+
+  # dropped support for the TLS ciphers/versions used by the Classic ELB health
+  # checker, so it never flips InService. TCP:443 just verifies TCP connectivity.
+  API_ELB_NAME=$(aws elb describe-load-balancers \
+    --query "LoadBalancerDescriptions[?contains(LoadBalancerName,'api-${PREFIX}')].LoadBalancerName" \
+    --output text 2>/dev/null || true)
+  if [[ -n "${API_ELB_NAME}" ]]; then
+    log "Patching ELB health check to TCP:443 (SSL incompatible with k8s 1.30+)..."
+    aws elb configure-health-check \
+      --load-balancer-name "${API_ELB_NAME}" \
+      --health-check "Target=TCP:443,Interval=10,Timeout=5,UnhealthyThreshold=2,HealthyThreshold=2" \
+      > /dev/null
+  fi
 fi
 
 # ── Wait for API ELB to be InService, then patch kubeconfig directly ───────────
@@ -167,13 +162,10 @@ while true; do
 done
 
 # ── K8S API custom domain ──────────────────────────────────────────────────────
-# Extract the API ELB hostname from the kubeconfig, create the Route53 CNAME,
-# then patch the kubeconfig to use the friendly hostname. Done before kubectl
-# wait so all subsequent kubectl calls use the custom domain, not the raw ELB.
-API_ELB=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' \
-  | sed 's|https://||; s|:443||')
-
-log "Creating Route53 record: ${K8S_API_DOMAIN} → ${API_ELB}"
+# Create Route53 CNAME pointing to the ELB, then patch the kubeconfig to use
+# the friendly hostname. Done before kubectl wait so all subsequent kubectl
+# calls use the custom domain, not the raw ELB.
+log "Creating Route53 record: ${K8S_API_DOMAIN} → ${API_ELB_DNS}"
 aws route53 change-resource-record-sets \
   --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
   --change-batch "$(cat <<EOF
@@ -184,7 +176,7 @@ aws route53 change-resource-record-sets \
       "Name": "${K8S_API_DOMAIN}",
       "Type": "CNAME",
       "TTL": 60,
-      "ResourceRecords": [{"Value": "${API_ELB}"}]
+      "ResourceRecords": [{"Value": "${API_ELB_DNS}"}]
     }
   }]
 }
@@ -238,13 +230,13 @@ helm upgrade --install teleport teleport/teleport-cluster \
 # ── Update Route53 DNS ────────────────────────────────────────────────────────
 log "Waiting for LoadBalancer hostname..."
 ELB_HOSTNAME=""
-ATTEMPTS=0
+LB_ATTEMPTS=0
 until [[ -n "${ELB_HOSTNAME}" ]]; do
   ELB_HOSTNAME=$(kubectl get svc teleport -n teleport \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
   if [[ -z "${ELB_HOSTNAME}" ]]; then
-    ATTEMPTS=$((ATTEMPTS + 1))
-    [[ $ATTEMPTS -ge 30 ]] && fail "Timed out waiting for LoadBalancer hostname"
+    LB_ATTEMPTS=$((LB_ATTEMPTS + 1))
+    [[ $LB_ATTEMPTS -ge 30 ]] && fail "Timed out waiting for LoadBalancer hostname"
     sleep 10
   fi
 done
