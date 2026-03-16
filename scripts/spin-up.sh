@@ -200,13 +200,6 @@ log "Waiting for nodes to be Ready (~10 min)..."
 kubectl wait --for=condition=Ready node --all --timeout=10m
 log "Cluster is healthy."
 
-# Switch kubeconfig to friendly hostname now that the cluster is confirmed healthy.
-# Only works if K8S_API_DOMAIN is in the cert SANs (requires correct additionalSANs
-# at cluster creation). If kubectl commands fail with TLS errors after make up,
-# run: kubectl config set-cluster ${CLUSTER_NAME} --server=https://<NLB_DNS>
-log "Updating kubeconfig to use ${K8S_API_DOMAIN}..."
-kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${K8S_API_DOMAIN}"
-
 # ── cert-manager ──────────────────────────────────────────────────────────────
 log "Installing cert-manager..."
 helm repo add jetstack https://charts.jetstack.io --force-update &>/dev/null
@@ -279,6 +272,10 @@ log "Teleport is ready at: https://${TELEPORT_DOMAIN}"
 log ""
 log "Create your first admin user:"
 log "  kubectl -n teleport exec deploy/teleport -- tctl users add admin --roles=access,editor,auditor"
+log ""
+log "kubectl is configured to use the NLB DNS directly."
+log "To switch to the friendly hostname (requires k8s.${TELEPORT_DOMAIN} in cert SANs):"
+log "  kubectl config set-cluster ${CLUSTER_NAME} --server=https://${K8S_API_DOMAIN}"
 log ""
 log "To pause (scale workers to 0):  make pause"
 log "To tear down:                   make down"
