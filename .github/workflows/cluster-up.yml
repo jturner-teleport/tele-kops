@@ -1,0 +1,111 @@
+name: Cluster Up
+
+on:
+  # Manual trigger from GitHub UI or: gh workflow run cluster-up.yml
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: "Number of workers (1 or 2)"
+        required: false
+        default: "1"
+  # Scheduled trigger disabled — uncomment to enable automatic spin-up.
+  # Runs every hour on weekdays; SCHEDULE_TZ + SCHEDULE_UP_HOUR vars gate actual execution.
+  # schedule:
+  #   - cron: "0 * * * 1-5"
+
+jobs:
+  check-schedule:
+    name: Check schedule window
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check scheduled time
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Manual trigger — running."
+          else
+            TZ_VAR="${{ vars.SCHEDULE_TZ || 'America/New_York' }}"
+            TARGET="${{ vars.SCHEDULE_UP_HOUR || '9' }}"
+            CURRENT=$(TZ="$TZ_VAR" date +%-H)
+            echo "Current hour: $CURRENT, target: $TARGET (TZ: $TZ_VAR)"
+            if [[ "$CURRENT" == "$TARGET" ]]; then
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "Outside scheduled window — skipping."
+            fi
+          fi
+
+  cluster-up:
+    name: Spin up Teleport cluster
+    needs: check-schedule
+    if: needs.check-schedule.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for GitHub OIDC → Teleport auth
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Teleport
+        uses: teleport-actions/setup@v1
+        with:
+          version: "17"
+
+      - name: Authenticate to AWS via Teleport OIDC
+        uses: teleport-actions/auth-aws@v2
+        with:
+          proxy: ${{ vars.TELEPORT_PROXY }}
+          token: ${{ vars.TELEPORT_BOT_TOKEN_NAME }}
+          # Set AWS_DEPLOY_ROLE_ARN to the PREFIX-kops-deployer role created by
+          # bootstrap.sh so GitHub Actions runs as the same role as local scripts.
+          aws-role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Install kops
+        run: |
+          curl -sLo kops "https://github.com/kubernetes/kops/releases/latest/download/kops-linux-amd64"
+          chmod +x kops
+          sudo mv kops /usr/local/bin/kops
+          kops version
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install envsubst
+        run: sudo apt-get install -y gettext-base
+
+      - name: Write config.env from GitHub variables
+        run: |
+          cat > config.env <<EOF
+          export PREFIX="${{ vars.PREFIX }}"
+          export AWS_REGION="${{ vars.AWS_REGION || 'us-east-1' }}"
+          export AWS_AZ="${{ vars.AWS_AZ || format('{0}a', vars.AWS_REGION || 'us-east-1') }}"
+          export AWS_ACCOUNT_ID=""
+          export CLUSTER_NAME="${{ vars.CLUSTER_NAME }}"
+          export K8S_API_DOMAIN="${{ vars.K8S_API_DOMAIN }}"
+          export KOPS_STATE_BUCKET="${{ vars.PREFIX }}-tele-kops-state"
+          export KOPS_STATE_STORE="s3://${{ vars.PREFIX }}-tele-kops-state"
+          export KOPS_SSH_PUBLIC_KEY="/tmp/id_rsa.pub"
+          export WORKER_MIN="${{ github.event.inputs.workers || vars.WORKER_MIN || '1' }}"
+          export WORKER_MAX="${{ github.event.inputs.workers || vars.WORKER_MAX || '2' }}"
+          export TELEPORT_VERSION="${{ vars.TELEPORT_VERSION || '18' }}"
+          export TELEPORT_DOMAIN="${{ vars.TELEPORT_DOMAIN }}"
+          export TELEPORT_BACKEND_TABLE="${{ vars.PREFIX }}-tele-backend"
+          export TELEPORT_EVENTS_TABLE="${{ vars.PREFIX }}-tele-events"
+          export TELEPORT_SESSIONS_BUCKET="${{ vars.PREFIX }}-tele-sessions"
+          export ROUTE53_HOSTED_ZONE_ID="${{ vars.ROUTE53_HOSTED_ZONE_ID }}"
+          export LETSENCRYPT_EMAIL="${{ vars.LETSENCRYPT_EMAIL }}"
+          EOF
+
+      - name: Write SSH public key
+        run: echo "${{ secrets.KOPS_SSH_PUBLIC_KEY }}" > /tmp/id_rsa.pub
+
+      - name: Spin up cluster
+        run: bash scripts/spin-up.sh

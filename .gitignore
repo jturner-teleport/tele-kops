@@ -1,0 +1,14 @@
+config.env
+*.swp
+*.swo
+.DS_Store
+tmp/
+.claude/
+
+# kops generated files
+kubeconfig
+.kops/
+out/
+# rendered manifests (templates are *.yaml.tpl; bare *.yaml would be accidental output)
+kops/*.yaml
+helm/*.yaml
