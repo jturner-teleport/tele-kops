@@ -179,6 +179,8 @@ KOPS_POLICY=$(cat <<POLICY
         "ec2:DescribeTags",
         "ec2:DescribeVolumes",
         "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeEgressOnlyInternetGateways",
+        "ec2:DescribeNetworkAcls",
         "ec2:DescribeVpcAttribute",
         "ec2:DescribeVpcs",
         "ec2:DetachInternetGateway",

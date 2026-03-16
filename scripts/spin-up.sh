@@ -84,6 +84,25 @@ else
     -i "${KOPS_SSH_PUBLIC_KEY}"
 fi
 
+# ── Clean up orphaned EBS volumes from any previous failed run ────────────────
+# If kops update was interrupted, etcd EBS volumes may be left in 'available'
+# (detached) state. kops cannot change their encryption field on retry, causing
+# "Field cannot be changed: Encrypted". Safe to delete: healthy clusters have
+# their volumes in 'in-use' state (attached to the master).
+ORPHANED_VOLS=$(aws ec2 describe-volumes \
+  --filters \
+    "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+    "Name=status,Values=available" \
+  --query 'Volumes[*].VolumeId' \
+  --output text 2>/dev/null || true)
+if [[ -n "${ORPHANED_VOLS}" ]]; then
+  log "Found orphaned EBS volumes from a previous run — deleting before provisioning..."
+  for vol in ${ORPHANED_VOLS}; do
+    log "  Deleting volume: ${vol}"
+    aws ec2 delete-volume --volume-id "${vol}"
+  done
+fi
+
 # ── Provision AWS infrastructure ───────────────────────────────────────────────
 log "Provisioning infrastructure (~5 min)..."
 kops update cluster \
@@ -92,34 +111,48 @@ kops update cluster \
   --yes \
   --admin
 
+# ── Fix ELB health check (SSL→TCP) ────────────────────────────────────────────
+# kops creates the Classic ELB with an SSL:443 health check. Kubernetes 1.30+
+# dropped support for the TLS ciphers/versions used by the Classic ELB health
+# checker, so it never flips InService. TCP:443 just verifies TCP connectivity.
+API_ELB_NAME=$(aws elb describe-load-balancers \
+  --query "LoadBalancerDescriptions[?contains(LoadBalancerName,'api-${PREFIX}')].LoadBalancerName" \
+  --output text 2>/dev/null || true)
+if [[ -n "${API_ELB_NAME}" ]]; then
+  log "Patching ELB health check to TCP:443 (SSL incompatible with k8s 1.30+)..."
+  aws elb configure-health-check \
+    --load-balancer-name "${API_ELB_NAME}" \
+    --health-check "Target=TCP:443,Interval=10,Timeout=5,UnhealthyThreshold=2,HealthyThreshold=2" \
+    > /dev/null
+fi
+
 # ── Re-export kubeconfig once the API server ELB endpoint is registered ────────
 # kops update exports the kubeconfig immediately, before the ELB exists.
 # With gossip DNS (.k8s.local) the fallback hostname doesn't resolve externally,
 # so we poll until kops can write a kubeconfig with a real endpoint.
 log "Waiting for API server endpoint to be registered..."
 ATTEMPTS=0
-while kops export kubeconfig \
+while true; do
+  kops export kubeconfig \
     --name="${CLUSTER_NAME}" \
     --state="${KOPS_STATE_STORE}" \
-    --admin 2>&1 | grep -q "no external API endpoints"; do
+    --admin 2>/dev/null || true
+  SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
+  # Gossip DNS fallback uses api.<cluster>.k8s.local — wait until kops writes a real ELB hostname
+  if [[ -n "${SERVER}" && "${SERVER}" != *".k8s.local"* ]]; then
+    log "API server endpoint: ${SERVER}"
+    break
+  fi
   ATTEMPTS=$((ATTEMPTS + 1))
   [[ $ATTEMPTS -ge 24 ]] && fail "Timed out waiting for API server endpoint (6 min)"
   log "  (attempt ${ATTEMPTS}/24, retrying in 15s...)"
   sleep 15
 done
 
-# ── Wait for cluster to be healthy ────────────────────────────────────────────
-log "Waiting for cluster to be ready (~10 min)..."
-kops validate cluster \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --wait 15m
-
-log "Cluster is healthy."
-
 # ── K8S API custom domain ──────────────────────────────────────────────────────
-# Extract the API ELB hostname from the kubeconfig, point the custom domain at
-# it, then update the kubeconfig server so kubectl uses the friendly hostname.
+# Extract the API ELB hostname from the kubeconfig, create the Route53 CNAME,
+# then patch the kubeconfig to use the friendly hostname. Done before kubectl
+# wait so all subsequent kubectl calls use the custom domain, not the raw ELB.
 API_ELB=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' \
   | sed 's|https://||; s|:443||')
 
@@ -143,6 +176,18 @@ EOF
 
 log "Updating kubeconfig to use ${K8S_API_DOMAIN}..."
 kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${K8S_API_DOMAIN}"
+
+# Allow Route53 to propagate the new CNAME before kubectl tries to resolve it
+log "Waiting 15s for DNS propagation..."
+sleep 15
+
+# ── Wait for cluster to be healthy ────────────────────────────────────────────
+# Use kubectl directly — kops validate re-exports the kubeconfig internally and
+# falls back to gossip DNS. kubectl wait uses the kubeconfig we just patched to
+# use K8S_API_DOMAIN, so all validation traffic goes through the custom domain.
+log "Waiting for nodes to be Ready (~10 min)..."
+kubectl wait --for=condition=Ready nodes --all --timeout=10m
+log "Cluster is healthy."
 
 # ── cert-manager ──────────────────────────────────────────────────────────────
 log "Installing cert-manager..."
