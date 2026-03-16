@@ -126,26 +126,33 @@ if [[ -n "${API_ELB_NAME}" ]]; then
     > /dev/null
 fi
 
-# ── Re-export kubeconfig once the API server ELB endpoint is registered ────────
-# kops update exports the kubeconfig immediately, before the ELB exists.
-# With gossip DNS (.k8s.local) the fallback hostname doesn't resolve externally,
-# so we poll until kops can write a kubeconfig with a real endpoint.
-log "Waiting for API server endpoint to be registered..."
+# ── Wait for API ELB to be InService, then patch kubeconfig directly ───────────
+# kops export kubeconfig checks for InService ELB instances but reliably fails
+# to detect them from within this script. Instead, poll AWS directly and set
+# the kubeconfig server ourselves — kops update already wrote the correct CA.
+log "Waiting for API server ELB to be InService..."
 ATTEMPTS=0
+API_ELB_DNS=""
 while true; do
-  kops export kubeconfig \
-    --name="${CLUSTER_NAME}" \
-    --state="${KOPS_STATE_STORE}" \
-    --admin 2>/dev/null || true
-  SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
-  # Gossip DNS fallback uses api.<cluster>.k8s.local — wait until kops writes a real ELB hostname
-  if [[ -n "${SERVER}" && "${SERVER}" != *".k8s.local"* ]]; then
-    log "API server endpoint: ${SERVER}"
-    break
+  LB_INFO=$(aws elb describe-load-balancers \
+    --query "LoadBalancerDescriptions[?contains(LoadBalancerName,'api-${PREFIX}')].[LoadBalancerName,DNSName]" \
+    --output text 2>/dev/null || true)
+  if [[ -n "${LB_INFO}" ]]; then
+    API_ELB_NAME=$(echo "${LB_INFO}" | awk '{print $1}')
+    API_ELB_DNS=$(echo "${LB_INFO}" | awk '{print $2}')
+    HEALTHY=$(aws elb describe-instance-health \
+      --load-balancer-name "${API_ELB_NAME}" \
+      --query 'InstanceStates[?State==`InService`].InstanceId' \
+      --output text 2>/dev/null || true)
+    if [[ -n "${HEALTHY}" ]]; then
+      log "API server ELB InService: ${API_ELB_DNS}"
+      kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${API_ELB_DNS}"
+      break
+    fi
   fi
   ATTEMPTS=$((ATTEMPTS + 1))
-  [[ $ATTEMPTS -ge 24 ]] && fail "Timed out waiting for API server endpoint (6 min)"
-  log "  (attempt ${ATTEMPTS}/24, retrying in 15s...)"
+  [[ $ATTEMPTS -ge 36 ]] && fail "Timed out waiting for API server ELB to be InService (9 min)"
+  log "  (attempt ${ATTEMPTS}/36, retrying in 15s...)"
   sleep 15
 done
 
