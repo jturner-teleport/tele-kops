@@ -175,20 +175,24 @@ aws route53 change-resource-record-sets \
 EOF
 )"
 
-log "Updating kubeconfig to use ${K8S_API_DOMAIN}..."
-kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${K8S_API_DOMAIN}"
-
-# Allow Route53 to propagate the new CNAME before kubectl tries to resolve it
+# Allow Route53 to propagate the new CNAME before the cluster is handed off
 log "Waiting 15s for DNS propagation..."
 sleep 15
 
 # ── Wait for cluster to be healthy ────────────────────────────────────────────
-# Use kubectl directly — kops validate re-exports the kubeconfig internally and
-# falls back to gossip DNS. kubectl wait uses the kubeconfig we just patched to
-# use K8S_API_DOMAIN, so all validation traffic goes through the custom domain.
+# Use the raw NLB DNS here (not K8S_API_DOMAIN) — the API server cert SANs
+# always include the NLB hostname, but only include K8S_API_DOMAIN if
+# additionalSANs was applied correctly at cluster creation time.
 log "Waiting for nodes to be Ready (~10 min)..."
 kubectl wait --for=condition=Ready nodes --all --timeout=10m
 log "Cluster is healthy."
+
+# Switch kubeconfig to friendly hostname now that the cluster is confirmed healthy.
+# Only works if K8S_API_DOMAIN is in the cert SANs (requires correct additionalSANs
+# at cluster creation). If kubectl commands fail with TLS errors after make up,
+# run: kubectl config set-cluster ${CLUSTER_NAME} --server=https://<NLB_DNS>
+log "Updating kubeconfig to use ${K8S_API_DOMAIN}..."
+kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${K8S_API_DOMAIN}"
 
 # ── cert-manager ──────────────────────────────────────────────────────────────
 log "Installing cert-manager..."
