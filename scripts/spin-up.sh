@@ -84,32 +84,42 @@ else
     -i "${KOPS_SSH_PUBLIC_KEY}"
 fi
 
-# ── Clean up orphaned EBS volumes from any previous failed run ────────────────
-# If kops update was interrupted, etcd EBS volumes may be left in 'available'
-# (detached) state. kops cannot change their encryption field on retry, causing
-# "Field cannot be changed: Encrypted". Safe to delete: healthy clusters have
-# their volumes in 'in-use' state (attached to the master).
-ORPHANED_VOLS=$(aws ec2 describe-volumes \
+# ── Check if cluster is already running ───────────────────────────────────────
+RUNNING_MASTER=$(aws ec2 describe-instances \
   --filters \
     "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
-    "Name=status,Values=available" \
-  --query 'Volumes[*].VolumeId' \
+    "Name=tag:Name,Values=master-*" \
+    "Name=instance-state-name,Values=running,pending" \
+  --query 'Reservations[0].Instances[0].InstanceId' \
   --output text 2>/dev/null || true)
-if [[ -n "${ORPHANED_VOLS}" ]]; then
-  log "Found orphaned EBS volumes from a previous run — deleting before provisioning..."
-  for vol in ${ORPHANED_VOLS}; do
-    log "  Deleting volume: ${vol}"
-    aws ec2 delete-volume --volume-id "${vol}"
-  done
-fi
 
-# ── Provision AWS infrastructure ───────────────────────────────────────────────
-log "Provisioning infrastructure (~5 min)..."
-kops update cluster \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --yes \
-  --admin
+if [[ -n "${RUNNING_MASTER}" && "${RUNNING_MASTER}" != "None" ]]; then
+  log "Cluster already running (master: ${RUNNING_MASTER}) — skipping provisioning."
+else
+  # ── Clean up orphaned etcd EBS volumes from any previous failed run ──────────
+  # kops cannot change the Encrypted field on existing volumes, causing
+  # "Field cannot be changed: Encrypted" on retry. Safe to delete here because
+  # no master is running — these are guaranteed to be from a previous failed run.
+  ORPHANED_VOLS=$(aws ec2 describe-volumes \
+    --filters "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+    --query 'Volumes[?Tags[?Key==`Name`]|[?starts_with(Value,`a.etcd-`)]].VolumeId' \
+    --output text 2>/dev/null || true)
+  if [[ -n "${ORPHANED_VOLS}" ]]; then
+    log "Found orphaned etcd volumes from a previous run — deleting before provisioning..."
+    for vol in ${ORPHANED_VOLS}; do
+      log "  Deleting volume: ${vol}"
+      aws ec2 delete-volume --volume-id "${vol}"
+    done
+  fi
+
+  # ── Provision AWS infrastructure ────────────────────────────────────────────
+  log "Provisioning infrastructure (~5 min)..."
+  kops update cluster \
+    --name="${CLUSTER_NAME}" \
+    --state="${KOPS_STATE_STORE}" \
+    --yes \
+    --admin
+fi
 
 # ── Fix ELB health check (SSL→TCP) ────────────────────────────────────────────
 # kops creates the Classic ELB with an SSL:443 health check. Kubernetes 1.30+
