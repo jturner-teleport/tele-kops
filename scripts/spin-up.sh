@@ -183,8 +183,21 @@ sleep 15
 # Use the raw NLB DNS here (not K8S_API_DOMAIN) — the API server cert SANs
 # always include the NLB hostname, but only include K8S_API_DOMAIN if
 # additionalSANs was applied correctly at cluster creation time.
+#
+# Two-stage wait:
+# 1. Poll until the API server responds (NLB health check passes on TCP connect
+#    before the API server has finished initializing TLS)
+# 2. kubectl wait for nodes Ready (--all exits immediately if no nodes exist yet)
+log "Waiting for API server to respond..."
+ATTEMPTS=0
+until kubectl get nodes &>/dev/null; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for API server to respond (10 min)"
+  sleep 15
+done
+
 log "Waiting for nodes to be Ready (~10 min)..."
-kubectl wait --for=condition=Ready nodes --all --timeout=10m
+kubectl wait --for=condition=Ready node --all --timeout=10m
 log "Cluster is healthy."
 
 # Switch kubeconfig to friendly hostname now that the cluster is confirmed healthy.
