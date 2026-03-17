@@ -246,7 +246,14 @@ done
 log "LoadBalancer: ${ELB_HOSTNAME}"
 log "Updating Route53 records..."
 
-for RECORD in "${TELEPORT_DOMAIN}" "*.${TELEPORT_DOMAIN}"; do
+# Look up the NLB's canonical hosted zone ID (needed for ALIAS at the zone apex).
+ELB_ZONE_ID=$(aws elbv2 describe-load-balancers \
+  --query "LoadBalancers[?DNSName=='${ELB_HOSTNAME}'].CanonicalHostedZoneId" \
+  --output text 2>/dev/null || true)
+
+# Zone apex (TELEPORT_DOMAIN) cannot use CNAME — use Route53 ALIAS A record.
+if [[ -n "${ELB_ZONE_ID}" && "${ELB_ZONE_ID}" != "None" ]]; then
+  log "Creating ALIAS A record: ${TELEPORT_DOMAIN} → ${ELB_HOSTNAME} (zone ${ELB_ZONE_ID})"
   aws route53 change-resource-record-sets \
     --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
     --change-batch "$(cat <<EOF
@@ -254,7 +261,32 @@ for RECORD in "${TELEPORT_DOMAIN}" "*.${TELEPORT_DOMAIN}"; do
   "Changes": [{
     "Action": "UPSERT",
     "ResourceRecordSet": {
-      "Name": "${RECORD}",
+      "Name": "${TELEPORT_DOMAIN}",
+      "Type": "A",
+      "AliasTarget": {
+        "HostedZoneId": "${ELB_ZONE_ID}",
+        "DNSName": "${ELB_HOSTNAME}",
+        "EvaluateTargetHealth": false
+      }
+    }
+  }]
+}
+EOF
+)"
+else
+  log "WARNING: could not determine ELB hosted zone ID; skipping apex ALIAS record"
+fi
+
+# Wildcard subdomain can use a plain CNAME.
+log "Creating CNAME: *.${TELEPORT_DOMAIN} → ${ELB_HOSTNAME}"
+aws route53 change-resource-record-sets \
+  --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
+  --change-batch "$(cat <<EOF
+{
+  "Changes": [{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {
+      "Name": "*.${TELEPORT_DOMAIN}",
       "Type": "CNAME",
       "TTL": 60,
       "ResourceRecords": [{"Value": "${ELB_HOSTNAME}"}]
@@ -263,7 +295,6 @@ for RECORD in "${TELEPORT_DOMAIN}" "*.${TELEPORT_DOMAIN}"; do
 }
 EOF
 )"
-done
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 log ""
