@@ -49,6 +49,10 @@ create_bucket() {
       --public-access-block-configuration \
       "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
   fi
+
+  aws s3api put-bucket-tagging \
+    --bucket "${bucket}" \
+    --tagging "TagSet=[{Key=teleport.dev/creator,Value=${LETSENCRYPT_EMAIL}},{Key=KubernetesCluster,Value=${CLUSTER_NAME}}]"
 }
 
 # ── kops state store ───────────────────────────────────────────────────────────
@@ -68,8 +72,19 @@ aws dynamodb create-table \
   --key-schema \
     AttributeName=HashKey,KeyType=HASH \
     AttributeName=FullPath,KeyType=RANGE \
-  --billing-mode PAY_PER_REQUEST 2>/dev/null \
-  || log "  Table already exists, skipping"
+  --billing-mode PAY_PER_REQUEST \
+  --tags \
+    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
+    Key=KubernetesCluster,Value="${CLUSTER_NAME}" \
+  2>/dev/null || log "  Table already exists, skipping"
+
+# Reconcile tags on existing table (create-table is skipped if it already exists).
+aws dynamodb tag-resource \
+  --region "${AWS_REGION}" \
+  --resource-arn "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_BACKEND_TABLE}" \
+  --tags \
+    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
+    Key=KubernetesCluster,Value="${CLUSTER_NAME}"
 
 # ── DynamoDB: audit log ────────────────────────────────────────────────────────
 log "Creating DynamoDB table: ${TELEPORT_EVENTS_TABLE}"
@@ -82,8 +97,19 @@ aws dynamodb create-table \
   --key-schema \
     AttributeName=SessionID,KeyType=HASH \
     AttributeName=EventIndex,KeyType=RANGE \
-  --billing-mode PAY_PER_REQUEST 2>/dev/null \
-  || log "  Table already exists, skipping"
+  --billing-mode PAY_PER_REQUEST \
+  --tags \
+    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
+    Key=KubernetesCluster,Value="${CLUSTER_NAME}" \
+  2>/dev/null || log "  Table already exists, skipping"
+
+# Reconcile tags on existing table.
+aws dynamodb tag-resource \
+  --region "${AWS_REGION}" \
+  --resource-arn "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_EVENTS_TABLE}" \
+  --tags \
+    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
+    Key=KubernetesCluster,Value="${CLUSTER_NAME}"
 
 # ── kops deployer role ─────────────────────────────────────────────────────────
 # A dedicated automation role that scripts assume before running kops. Using a
