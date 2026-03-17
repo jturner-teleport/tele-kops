@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # resume.sh — Scale workers back up. Pods reschedule in ~2-3 minutes.
+# Uses the ASG directly — avoids kops update and the EBS Encrypted conflict.
 # Run: make resume
 set -euo pipefail
 
@@ -10,9 +11,6 @@ source "${ROOT_DIR}/config.env"
 log()  { echo "[resume] $*"; }
 fail() { echo "[resume] ERROR: $*" >&2; exit 1; }
 
-# The Go AWS SDK validates ALL profiles in ~/.aws/config on load, including
-# [default], which may have a broken source_profile. Fix: export SSO credentials
-# as env vars and set AWS_CONFIG_FILE=/dev/null so the SDK never reads the file.
 if [[ -n "${AWS_PROFILE:-}" ]]; then
   CREDS=$(aws configure export-credentials --profile "${AWS_PROFILE}" --format env 2>/dev/null) \
     || fail "AWS SSO session expired or invalid. Run: aws sso login --sso-session gravitational"
@@ -21,7 +19,6 @@ if [[ -n "${AWS_PROFILE:-}" ]]; then
   export AWS_CONFIG_FILE=/dev/null
 fi
 
-# ── Assume kops deployer role ──────────────────────────────────────────────────
 if [[ -z "${AWS_ACCOUNT_ID:-}" ]]; then
   AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 fi
@@ -37,32 +34,23 @@ read -r AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN < <(
 export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
 AWS_AZ="${AWS_AZ:-${AWS_REGION}a}"
+IG_NAME="nodes-${AWS_AZ}"
 
-log "Scaling workers back to min=${WORKER_MIN} max=${WORKER_MAX}..."
+# Find the worker ASG by its kops instance group tag.
+ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
+  --filters "Name=tag:kops.k8s.io/instancegroup,Values=${IG_NAME}" \
+            "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+  --query 'AutoScalingGroups[0].AutoScalingGroupName' \
+  --output text 2>/dev/null || true)
 
-TMPFILE=$(mktemp)
-PATCHED=$(mktemp)
-trap 'rm -f "${TMPFILE}" "${PATCHED}"' EXIT
+[[ -z "${ASG_NAME}" || "${ASG_NAME}" == "None" ]] \
+  && fail "Could not find ASG for instance group ${IG_NAME} in cluster ${CLUSTER_NAME}"
 
-kops get instancegroup "nodes-${AWS_AZ}" \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  -o yaml > "${TMPFILE}"
-
-sed "s/minSize:.*/minSize: ${WORKER_MIN}/" "${TMPFILE}" \
-  | sed "s/maxSize:.*/maxSize: ${WORKER_MAX}/" > "${PATCHED}"
-
-kops replace --state="${KOPS_STATE_STORE}" -f "${PATCHED}"
-
-kops update cluster \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --yes
-
-kops rolling-update cluster \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --yes
+log "Scaling ${ASG_NAME} to min=${WORKER_MIN} max=${WORKER_MAX}..."
+aws autoscaling update-auto-scaling-group \
+  --auto-scaling-group-name "${ASG_NAME}" \
+  --min-size "${WORKER_MIN}" \
+  --max-size "${WORKER_MAX}"
 
 unset AWS_CONFIG_FILE
 log "Workers scaling up. Teleport pods will reschedule in ~2-3 minutes."
