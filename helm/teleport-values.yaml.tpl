@@ -20,6 +20,7 @@ highAvailability:
   certManager:
     enabled: true
     issuerName: letsencrypt-production
+    issuerKind: ClusterIssuer
 
 podSecurityPolicy:
   enabled: false

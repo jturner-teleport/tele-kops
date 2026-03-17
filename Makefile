@@ -1,4 +1,4 @@
-.PHONY: bootstrap up down pause resume delete clean-cluster
+.PHONY: bootstrap up down pause resume delete clean-cluster kubeconfig
 
 ## bootstrap  Run once to create S3 buckets and DynamoDB tables
 bootstrap:
@@ -27,6 +27,10 @@ delete:
 ## clean-cluster  Delete orphaned EC2 resources when make up fails (preserves data)
 clean-cluster:
 	@bash scripts/clean-cluster.sh
+
+## kubeconfig  Refresh kubectl credentials (token expires after ~18h)
+kubeconfig:
+	@bash scripts/kubeconfig.sh
 
 ## help       Show this help
 help:

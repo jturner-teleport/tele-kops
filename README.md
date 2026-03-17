@@ -8,10 +8,27 @@ Self-hosted [Teleport](https://goteleport.com) OSS on a cost-effective [k0ps](ht
 
 | Mode | Monthly | Notes |
 |---|---|---|
-| Scheduled (full spin-up/down) | ~$15 | ~$0.07/hr active, $0 when down |
+| Scheduled (full spin-up/down) | ~$22 | ~$0.10/hr active, $0 when down |
 | Pause/resume (master 24/7) | ~$41 | ~$1/day master idle cost |
-| Always on | ~$70 | |
+| Always on | ~$75 | |
 | **EKS equivalent** | **~$79–112** | $73/mo control plane fee alone |
+
+### Active cost breakdown (~$0.10/hr)
+
+| Resource | Spec | $/hr |
+|---|---|---|
+| Master EC2 | t3.medium, on-demand | ~$0.042 |
+| Worker EC2 | t3.medium, spot | ~$0.008–0.015 |
+| Classic ELB | API server | ~$0.025 |
+| EBS volumes | 128 GB etcd-main + 64 GB etcd-events + 2x 20 GB root (gp3) | ~$0.022 |
+
+### Persistent cost (survives teardown)
+
+| Resource | Cost |
+|---|---|
+| S3 — kops state + session recordings | ~$0.023/GB/mo |
+| DynamoDB — cluster backend + audit log | Pay-per-request, ~$0 at low usage |
+| Route53 — hosted zone | $0.50/mo (existing zone) |
 
 Spot instances are used for worker nodes. The master runs on-demand (t3.medium, ~$0.042/hr).
 

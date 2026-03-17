@@ -42,11 +42,6 @@ for cmd in kops kubectl helm aws envsubst; do
   command -v "$cmd" &>/dev/null || fail "Missing required tool: ${cmd}"
 done
 
-if [[ -z "${AWS_ACCOUNT_ID:-}" ]]; then
-  AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-  export AWS_ACCOUNT_ID
-fi
-
 AWS_AZ="${AWS_AZ:-${AWS_REGION}a}"
 export AWS_AZ
 
@@ -84,46 +79,85 @@ else
     -i "${KOPS_SSH_PUBLIC_KEY}"
 fi
 
-# ── Provision AWS infrastructure ───────────────────────────────────────────────
-log "Provisioning infrastructure (~5 min)..."
-kops update cluster \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --yes \
-  --admin
+# ── Check if cluster is already running ───────────────────────────────────────
+RUNNING_MASTER=$(aws ec2 describe-instances \
+  --filters \
+    "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+    "Name=tag:Name,Values=master-*" \
+    "Name=instance-state-name,Values=running,pending" \
+  --query 'Reservations[0].Instances[0].InstanceId' \
+  --output text 2>/dev/null || true)
 
-# ── Re-export kubeconfig once the API server ELB endpoint is registered ────────
-# kops update exports the kubeconfig immediately, before the ELB exists.
-# With gossip DNS (.k8s.local) the fallback hostname doesn't resolve externally,
-# so we poll until kops can write a kubeconfig with a real endpoint.
-log "Waiting for API server endpoint to be registered..."
-ATTEMPTS=0
-while kops export kubeconfig \
+if [[ -n "${RUNNING_MASTER}" && "${RUNNING_MASTER}" != "None" ]]; then
+  log "Cluster already running (master: ${RUNNING_MASTER}) — skipping provisioning."
+else
+  # ── Clean up orphaned etcd EBS volumes from any previous failed run ──────────
+  # kops cannot change the Encrypted field on existing volumes, causing
+  # "Field cannot be changed: Encrypted" on retry. Safe to delete here because
+  # no master is running — these are guaranteed to be from a previous failed run.
+  ORPHANED_VOLS=$(aws ec2 describe-volumes \
+    --filters "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+    --query 'Volumes[?Tags[?Key==`Name`]|[?starts_with(Value,`a.etcd-`)]].VolumeId' \
+    --output text 2>/dev/null || true)
+  if [[ -n "${ORPHANED_VOLS}" ]]; then
+    log "Found orphaned etcd volumes from a previous run — deleting before provisioning..."
+    for vol in ${ORPHANED_VOLS}; do
+      log "  Deleting volume: ${vol}"
+      aws ec2 delete-volume --volume-id "${vol}"
+    done
+  fi
+
+  # ── Provision AWS infrastructure ──────────────────────────────────────────
+  log "Provisioning infrastructure (~5 min)..."
+  kops update cluster \
     --name="${CLUSTER_NAME}" \
     --state="${KOPS_STATE_STORE}" \
-    --admin 2>&1 | grep -q "no external API endpoints"; do
+    --yes \
+    --admin
+
+fi
+
+# ── Wait for API NLB to be healthy, then patch kubeconfig directly ─────────────
+# kops export kubeconfig checks for healthy NLB targets but reliably fails to
+# detect them from within this script. Instead, poll AWS directly via elbv2 and
+# set the kubeconfig server ourselves — kops update already wrote the correct CA.
+log "Waiting for API server NLB to be healthy..."
+ATTEMPTS=0
+API_ELB_DNS=""
+while true; do
+  NLB_INFO=$(aws elbv2 describe-load-balancers \
+    --query "LoadBalancers[?contains(LoadBalancerName,'api-${PREFIX}')].[LoadBalancerArn,DNSName]" \
+    --output text 2>/dev/null || true)
+  if [[ -n "${NLB_INFO}" ]]; then
+    NLB_ARN=$(echo "${NLB_INFO}" | awk '{print $1}')
+    API_ELB_DNS=$(echo "${NLB_INFO}" | awk '{print $2}')
+    TG_ARN=$(aws elbv2 describe-target-groups \
+      --load-balancer-arn "${NLB_ARN}" \
+      --query 'TargetGroups[0].TargetGroupArn' \
+      --output text 2>/dev/null || true)
+    if [[ -n "${TG_ARN}" && "${TG_ARN}" != "None" ]]; then
+      HEALTHY=$(aws elbv2 describe-target-health \
+        --target-group-arn "${TG_ARN}" \
+        --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].Target.Id' \
+        --output text 2>/dev/null || true)
+      if [[ -n "${HEALTHY}" ]]; then
+        log "API server NLB healthy: ${API_ELB_DNS}"
+        kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${API_ELB_DNS}"
+        break
+      fi
+    fi
+  fi
   ATTEMPTS=$((ATTEMPTS + 1))
-  [[ $ATTEMPTS -ge 24 ]] && fail "Timed out waiting for API server endpoint (6 min)"
-  log "  (attempt ${ATTEMPTS}/24, retrying in 15s...)"
+  [[ $ATTEMPTS -ge 36 ]] && fail "Timed out waiting for API server NLB to be healthy (9 min)"
+  log "  (attempt ${ATTEMPTS}/36, retrying in 15s...)"
   sleep 15
 done
 
-# ── Wait for cluster to be healthy ────────────────────────────────────────────
-log "Waiting for cluster to be ready (~10 min)..."
-kops validate cluster \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --wait 15m
-
-log "Cluster is healthy."
-
 # ── K8S API custom domain ──────────────────────────────────────────────────────
-# Extract the API ELB hostname from the kubeconfig, point the custom domain at
-# it, then update the kubeconfig server so kubectl uses the friendly hostname.
-API_ELB=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' \
-  | sed 's|https://||; s|:443||')
-
-log "Creating Route53 record: ${K8S_API_DOMAIN} → ${API_ELB}"
+# Create Route53 CNAME pointing to the ELB, then patch the kubeconfig to use
+# the friendly hostname. Done before kubectl wait so all subsequent kubectl
+# calls use the custom domain, not the raw ELB.
+log "Creating Route53 record: ${K8S_API_DOMAIN} → ${API_ELB_DNS}"
 aws route53 change-resource-record-sets \
   --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
   --change-batch "$(cat <<EOF
@@ -134,15 +168,37 @@ aws route53 change-resource-record-sets \
       "Name": "${K8S_API_DOMAIN}",
       "Type": "CNAME",
       "TTL": 60,
-      "ResourceRecords": [{"Value": "${API_ELB}"}]
+      "ResourceRecords": [{"Value": "${API_ELB_DNS}"}]
     }
   }]
 }
 EOF
 )"
 
-log "Updating kubeconfig to use ${K8S_API_DOMAIN}..."
-kubectl config set-cluster "${CLUSTER_NAME}" --server="https://${K8S_API_DOMAIN}"
+# Allow Route53 to propagate the new CNAME before the cluster is handed off
+log "Waiting 15s for DNS propagation..."
+sleep 15
+
+# ── Wait for cluster to be healthy ────────────────────────────────────────────
+# Use the raw NLB DNS here (not K8S_API_DOMAIN) — the API server cert SANs
+# always include the NLB hostname, but only include K8S_API_DOMAIN if
+# additionalSANs was applied correctly at cluster creation time.
+#
+# Two-stage wait:
+# 1. Poll until the API server responds (NLB health check passes on TCP connect
+#    before the API server has finished initializing TLS)
+# 2. kubectl wait for nodes Ready (--all exits immediately if no nodes exist yet)
+log "Waiting for API server to respond..."
+ATTEMPTS=0
+until kubectl get nodes &>/dev/null; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for API server to respond (10 min)"
+  sleep 15
+done
+
+log "Waiting for nodes to be Ready (~10 min)..."
+kubectl wait --for=condition=Ready node --all --timeout=10m
+log "Cluster is healthy."
 
 # ── cert-manager ──────────────────────────────────────────────────────────────
 log "Installing cert-manager..."
@@ -152,7 +208,7 @@ helm repo update &>/dev/null
 helm upgrade --install cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --create-namespace \
-  --set installCRDs=true \
+  --set crds.enabled=true \
   --wait \
   --timeout 5m
 
@@ -176,13 +232,13 @@ helm upgrade --install teleport teleport/teleport-cluster \
 # ── Update Route53 DNS ────────────────────────────────────────────────────────
 log "Waiting for LoadBalancer hostname..."
 ELB_HOSTNAME=""
-ATTEMPTS=0
+LB_ATTEMPTS=0
 until [[ -n "${ELB_HOSTNAME}" ]]; do
   ELB_HOSTNAME=$(kubectl get svc teleport -n teleport \
     -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
   if [[ -z "${ELB_HOSTNAME}" ]]; then
-    ATTEMPTS=$((ATTEMPTS + 1))
-    [[ $ATTEMPTS -ge 30 ]] && fail "Timed out waiting for LoadBalancer hostname"
+    LB_ATTEMPTS=$((LB_ATTEMPTS + 1))
+    [[ $LB_ATTEMPTS -ge 30 ]] && fail "Timed out waiting for LoadBalancer hostname"
     sleep 10
   fi
 done
@@ -190,7 +246,14 @@ done
 log "LoadBalancer: ${ELB_HOSTNAME}"
 log "Updating Route53 records..."
 
-for RECORD in "${TELEPORT_DOMAIN}" "*.${TELEPORT_DOMAIN}"; do
+# Look up the NLB's canonical hosted zone ID (needed for ALIAS at the zone apex).
+ELB_ZONE_ID=$(aws elbv2 describe-load-balancers \
+  --query "LoadBalancers[?DNSName=='${ELB_HOSTNAME}'].CanonicalHostedZoneId" \
+  --output text 2>/dev/null || true)
+
+# Zone apex (TELEPORT_DOMAIN) cannot use CNAME — use Route53 ALIAS A record.
+if [[ -n "${ELB_ZONE_ID}" && "${ELB_ZONE_ID}" != "None" ]]; then
+  log "Creating ALIAS A record: ${TELEPORT_DOMAIN} → ${ELB_HOSTNAME} (zone ${ELB_ZONE_ID})"
   aws route53 change-resource-record-sets \
     --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
     --change-batch "$(cat <<EOF
@@ -198,7 +261,32 @@ for RECORD in "${TELEPORT_DOMAIN}" "*.${TELEPORT_DOMAIN}"; do
   "Changes": [{
     "Action": "UPSERT",
     "ResourceRecordSet": {
-      "Name": "${RECORD}",
+      "Name": "${TELEPORT_DOMAIN}",
+      "Type": "A",
+      "AliasTarget": {
+        "HostedZoneId": "${ELB_ZONE_ID}",
+        "DNSName": "${ELB_HOSTNAME}",
+        "EvaluateTargetHealth": false
+      }
+    }
+  }]
+}
+EOF
+)"
+else
+  log "WARNING: could not determine ELB hosted zone ID; skipping apex ALIAS record"
+fi
+
+# Wildcard subdomain can use a plain CNAME.
+log "Creating CNAME: *.${TELEPORT_DOMAIN} → ${ELB_HOSTNAME}"
+aws route53 change-resource-record-sets \
+  --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
+  --change-batch "$(cat <<EOF
+{
+  "Changes": [{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {
+      "Name": "*.${TELEPORT_DOMAIN}",
       "Type": "CNAME",
       "TTL": 60,
       "ResourceRecords": [{"Value": "${ELB_HOSTNAME}"}]
@@ -207,7 +295,6 @@ for RECORD in "${TELEPORT_DOMAIN}" "*.${TELEPORT_DOMAIN}"; do
 }
 EOF
 )"
-done
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 log ""
@@ -216,6 +303,10 @@ log "Teleport is ready at: https://${TELEPORT_DOMAIN}"
 log ""
 log "Create your first admin user:"
 log "  kubectl -n teleport exec deploy/teleport -- tctl users add admin --roles=access,editor,auditor"
+log ""
+log "kubectl is configured to use the NLB DNS directly."
+log "To switch to the friendly hostname (requires k8s.${TELEPORT_DOMAIN} in cert SANs):"
+log "  kubectl config set-cluster ${CLUSTER_NAME} --server=https://${K8S_API_DOMAIN}"
 log ""
 log "To pause (scale workers to 0):  make pause"
 log "To tear down:                   make down"
