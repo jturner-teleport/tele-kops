@@ -1,6 +1,6 @@
-# Teleport kops cluster
+# Teleport k0ps cluster
 
-Self-hosted [Teleport](https://goteleport.com) OSS on a cost-effective [kops](https://kops.sigs.k8s.io/getting_started/install/) Kubernetes cluster in AWS. Includes full lifecycle management — spin up, spin down, pause, resume — with optional GitHub Actions scheduling for automated 9am–7pm weekday operation.
+Self-hosted [Teleport](https://goteleport.com) OSS on a cost-effective [k0ps](https://kops.sigs.k8s.io/getting_started/install/) Kubernetes cluster in AWS. Includes full lifecycle management — spin up, spin down, pause, resume — with optional GitHub Actions scheduling for automated 9am–7pm weekday operation.
 
 ## Contents
 
@@ -67,7 +67,7 @@ Spot instances are used for worker nodes. The master runs on-demand (t3.medium, 
   Route53: teleport.yourdomain.com  (ALIAS A → NLB)
         |
         v
-  AWS NLB (created by kops)
+  AWS NLB (created by k0ps)
         |
         v
   ┌─────────────────────────────────────────┐
@@ -100,7 +100,7 @@ Spot instances are used for worker nodes. The master runs on-demand (t3.medium, 
 
 | Tool | Install |
 |---|---|
-| [kops](https://kops.sigs.k8s.io/getting_started/install/) | `brew install kops` |
+| [k0ps](https://kops.sigs.k8s.io/getting_started/install/) | `brew install kops` |
 | [kubectl](https://kubernetes.io/docs/tasks/tools/) | `brew install kubectl` |
 | [helm](https://helm.sh/docs/intro/install/) | `brew install helm` |
 | [aws CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) | `brew install awscli` |
@@ -108,7 +108,7 @@ Spot instances are used for worker nodes. The master runs on-demand (t3.medium, 
 
 AWS credentials must be configured (`aws configure` or environment variables) with permissions to manage EC2, S3, DynamoDB, IAM, Route53, and VPC.
 
-An SSH keypair is required for kops node access. Defaults to `~/.ssh/id_rsa.pub` — generate one with `ssh-keygen -t rsa -b 4096` if needed.
+An SSH keypair is required for k0ps node access. Defaults to `~/.ssh/id_rsa.pub` — generate one with `ssh-keygen -t rsa -b 4096` if needed.
 
 ---
 
@@ -159,7 +159,7 @@ make up
 
 This takes ~15 minutes and:
 
-1. Creates the kops cluster config in S3
+1. Creates the k0ps cluster config in S3
 2. Provisions EC2 instances, VPC, security groups, NLB
 3. Waits for the cluster to be healthy
 4. Installs cert-manager with a Let's Encrypt ClusterIssuer
@@ -222,7 +222,7 @@ make up
 
 ### Refresh kubeconfig
 
-kops admin tokens expire after ~18 hours. Refresh with:
+k0ps admin tokens expire after ~18 hours. Refresh with:
 
 ```bash
 make kubeconfig
@@ -244,7 +244,7 @@ Then re-run `make up`.
 
 Automate spin-up and spin-down on a weekday schedule. Authentication uses your existing Teleport cluster as an OIDC provider — no long-lived AWS keys stored in GitHub.
 
-### Step 1: AWS — add a trust policy to the kops deployer role
+### Step 1: AWS — add a trust policy to the k0ps deployer role
 
 `bootstrap.sh` creates the `${PREFIX}-kops-deployer` IAM role with a trust policy allowing any principal in your AWS account to assume it. To let GitHub Actions (via Teleport OIDC) assume it directly, add a trust statement for your Teleport cluster's OIDC provider:
 
@@ -377,7 +377,7 @@ gh workflow run cluster-down.yml
 │   └── bootstrap.sh            # One-time: create S3 buckets, DynamoDB tables, IAM role
 │
 ├── kops/
-│   └── cluster.yaml.tpl        # kops cluster manifest (envsubst template)
+│   └── cluster.yaml.tpl        # k0ps cluster manifest (envsubst template)
 │
 ├── helm/
 │   ├── teleport-values.yaml.tpl      # Teleport Helm values
@@ -417,7 +417,7 @@ gh workflow run cluster-down.yml
 
 ### kubectl credentials expired
 
-kops admin tokens expire after ~18 hours:
+k0ps admin tokens expire after ~18 hours:
 
 ```bash
 make kubeconfig
