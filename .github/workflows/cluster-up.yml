@@ -107,5 +107,29 @@ jobs:
       - name: Write SSH public key
         run: echo "${{ secrets.KOPS_SSH_PUBLIC_KEY }}" > /tmp/id_rsa.pub
 
-      - name: Spin up cluster
+      - name: Check if cluster master is already running
+        id: check-cluster
+        run: |
+          source config.env
+          RUNNING_MASTER=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+              "Name=tag:Name,Values=master-*" \
+              "Name=instance-state-name,Values=running,pending" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text 2>/dev/null || true)
+          if [[ -n "${RUNNING_MASTER}" && "${RUNNING_MASTER}" != "None" ]]; then
+            echo "cluster_exists=true" >> "$GITHUB_OUTPUT"
+            echo "Master is running (${RUNNING_MASTER}) — will resume."
+          else
+            echo "cluster_exists=false" >> "$GITHUB_OUTPUT"
+            echo "No running master found — will do full spin-up."
+          fi
+
+      - name: Resume existing cluster
+        if: steps.check-cluster.outputs.cluster_exists == 'true'
+        run: bash scripts/resume.sh
+
+      - name: Full spin-up (cluster does not exist)
+        if: steps.check-cluster.outputs.cluster_exists == 'false'
         run: bash scripts/spin-up.sh
