@@ -17,6 +17,20 @@ joinParams:
   method: "kubernetes"
   tokenName: "grafana-app-agent-token"
 
+# Per-release Secret name so multiple teleport-kube-agent helm releases can
+# coexist in the same namespace (default would collide).
+joinTokenSecret:
+  name: "grafana-agent-join-token"
+  create: true
+
+# Expose /metrics on port 3000 for Prometheus scraping.
+# Setting podMonitor.enabled=true causes the chart to:
+#   1. Add `--diag-addr=0.0.0.0:3000` to the teleport args
+#   2. Render a PodMonitor CR that the kube-prometheus-stack picks up
+podMonitor:
+  enabled: true
+  interval: 30s
+
 apps:
   - name: grafana
     uri: "http://monitoring-grafana.monitoring.svc.cluster.local:80"

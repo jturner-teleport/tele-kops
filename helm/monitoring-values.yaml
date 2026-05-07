@@ -1,10 +1,18 @@
 # monitoring-values.yaml — kube-prometheus-stack values for the Teleport dev cluster.
 prometheus:
   prometheusSpec:
-    # Scrape ServiceMonitors from all namespaces (needed to reach teleport namespace).
+    # Scrape ServiceMonitors AND PodMonitors from all namespaces. ServiceMonitor
+    # selectors cover the teleport-cluster auth/proxy. PodMonitor selectors cover
+    # the teleport-kube-agent deployments (grafana-agent, prometheus-agent, etc.).
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+    # Public URL for Prometheus when accessed behind Teleport's app proxy.
+    # Without this, Prometheus links/redirects break.
+    externalUrl: "https://prometheus.teleport.jwturner.dev"
     retention: 7d
     storageSpec:
       volumeClaimTemplate:
