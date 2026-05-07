@@ -44,20 +44,20 @@ jobs:
           # Apply static YAML files (roles, rules, k8s-rbac are NOT applied via tctl here — k8s-rbac goes via kubectl)
           for f in teleport/roles/*.yaml; do
             echo "Applying $f"
-            tctl apply -f "$f"
+            tctl create -f "$f" --force
           done
 
           for f in teleport/rules/*.yaml; do
             echo "Applying $f"
-            tctl apply -f "$f"
+            tctl create -f "$f" --force
           done
 
           # Bot and token resources
           for f in teleport/bots/*.yaml teleport/tokens/*.yaml; do
             echo "Applying $f"
-            tctl apply -f "$f"
+            tctl create -f "$f" --force
           done
 
           # OIDC connector template (requires envsubst)
-          envsubst < teleport/connectors/google-oidc.yaml.tpl | tctl apply -f -
+          envsubst < teleport/connectors/google-oidc.yaml.tpl | tctl create -f - --force
           echo "All Teleport config applied."
