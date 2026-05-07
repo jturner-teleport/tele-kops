@@ -10,4 +10,6 @@ spec:
   github:
     allow:
       - repository: jturner-teleport/tele-kops
-        workflow: teleport-apply.yml
+        # Matches the workflow's `name:` field (the GitHub OIDC `workflow` claim),
+        # NOT the filename. Update if the workflow is renamed.
+        workflow: Apply Teleport Config
