@@ -4,6 +4,18 @@ metadata:
   name: google-groups-to-team
 spec:
   priority: 0
+  # NOTE: traits_map fully REPLACES the user's traits — any trait not listed
+  # here is dropped. We must explicitly preserve `groups` (used by the OIDC
+  # connector's claims_to_roles to map roles) along with email/name/picture
+  # which Teleport surfaces in the UI and audit events.
   traits_map:
     team:
       - 'regexp.replace(external.groups, "^([^@]+)@b1tsized\\.tech$", "$1")'
+    groups:
+      - 'external.groups'
+    email:
+      - 'external.email'
+    name:
+      - 'external.name'
+    picture:
+      - 'external.picture'
