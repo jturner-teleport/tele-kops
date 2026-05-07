@@ -1,0 +1,21 @@
+kind: role
+version: v7
+metadata:
+  name: ci-bot-role
+spec:
+  allow:
+    rules:
+      - resources:
+          - role
+          - oidc
+          - login_rule
+          - token
+          - bot
+        verbs:
+          - create
+          - read
+          - update
+          - delete
+          - list
+  options:
+    max_session_ttl: 1h0m0s

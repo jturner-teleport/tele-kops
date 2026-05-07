@@ -1,0 +1,48 @@
+# approval-bot-deployment.yaml — Kubernetes Deployment for the Teleport auto-approval bot.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: approval-bot
+  namespace: teleport
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: approval-bot
+  namespace: teleport
+  labels:
+    app: approval-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: approval-bot
+  template:
+    metadata:
+      labels:
+        app: approval-bot
+    spec:
+      serviceAccountName: approval-bot
+      containers:
+        - name: approval-bot
+          image: ghcr.io/jturner-teleport/approval-bot:latest
+          env:
+            - name: TELEPORT_PROXY_ADDR
+              value: ${TELEPORT_DOMAIN}:443
+            - name: TELEPORT_IDENTITY_FILE
+              value: /var/run/secrets/teleport/identity
+          volumeMounts:
+            - name: teleport-identity
+              mountPath: /var/run/secrets/teleport
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: teleport-identity
+          secret:
+            secretName: approval-bot-identity

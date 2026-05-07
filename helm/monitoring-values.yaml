@@ -1,0 +1,33 @@
+# monitoring-values.yaml — kube-prometheus-stack values for the Teleport dev cluster.
+prometheus:
+  prometheusSpec:
+    # Scrape ServiceMonitors from all namespaces (needed to reach teleport namespace).
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    retention: 7d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+
+grafana:
+  adminPassword: "changeme"
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana"
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi

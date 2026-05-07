@@ -42,6 +42,9 @@ for cmd in kops kubectl helm aws envsubst; do
   command -v "$cmd" &>/dev/null || fail "Missing required tool: ${cmd}"
 done
 
+[[ -f "${ROOT_DIR}/${TELEPORT_LICENSE_FILE:-license.pem}" ]] \
+  || fail "Enterprise license not found: ${TELEPORT_LICENSE_FILE:-license.pem}"
+
 AWS_AZ="${AWS_AZ:-${AWS_REGION}a}"
 export AWS_AZ
 
@@ -59,15 +62,23 @@ trap 'rm -rf "${TMPDIR_WORK}"' EXIT
 
 CLUSTER_MANIFEST="${TMPDIR_WORK}/cluster.yaml"
 ISSUER_MANIFEST="${TMPDIR_WORK}/issuer.yaml"
+CNPG_INITDB_MANIFEST="${TMPDIR_WORK}/cnpg-initdb.yaml"
+CNPG_RECOVERY_MANIFEST="${TMPDIR_WORK}/cnpg-recovery.yaml"
+# TELEPORT_VALUES is rendered AFTER CNPG is ready (requires CNPG_PASSWORD).
 TELEPORT_VALUES="${TMPDIR_WORK}/teleport-values.yaml"
 
-envsubst < "${ROOT_DIR}/kops/cluster.yaml.tpl"                > "${CLUSTER_MANIFEST}"
-envsubst < "${ROOT_DIR}/helm/cert-manager-issuer.yaml.tpl"    > "${ISSUER_MANIFEST}"
-envsubst < "${ROOT_DIR}/helm/teleport-values.yaml.tpl"        > "${TELEPORT_VALUES}"
+envsubst < "${ROOT_DIR}/kops/cluster.yaml.tpl"                  > "${CLUSTER_MANIFEST}"
+envsubst < "${ROOT_DIR}/helm/cert-manager-issuer.yaml.tpl"      > "${ISSUER_MANIFEST}"
+envsubst < "${ROOT_DIR}/helm/cnpg-cluster-initdb.yaml.tpl"      > "${CNPG_INITDB_MANIFEST}"
+envsubst < "${ROOT_DIR}/helm/cnpg-cluster-recovery.yaml.tpl"    > "${CNPG_RECOVERY_MANIFEST}"
 
-# ── Create kops cluster (skip if already exists) ───────────────────────────────
+# ── Create or update kops cluster config in state store ───────────────────────
+# Always replace (not just create) so that changes to cluster.yaml.tpl —
+# especially additionalPolicies — are synced to the state store and applied
+# by kops update. Without this, manually patched IAM policies get reverted.
 if kops get cluster --name="${CLUSTER_NAME}" --state="${KOPS_STATE_STORE}" &>/dev/null; then
-  log "Cluster config already exists in state store, skipping create."
+  log "Syncing cluster config to state store (kops replace)..."
+  kops replace -f "${CLUSTER_MANIFEST}" --state="${KOPS_STATE_STORE}"
 else
   log "Creating kops cluster configuration..."
   kops create -f "${CLUSTER_MANIFEST}" --state="${KOPS_STATE_STORE}"
@@ -197,6 +208,14 @@ until kubectl get nodes &>/dev/null; do
 done
 
 log "Waiting for nodes to be Ready (~10 min)..."
+# kubectl wait --all exits immediately with "no matching resources" if no nodes
+# have registered yet. Poll until at least one node appears first.
+ATTEMPTS=0
+until kubectl get nodes --no-headers 2>/dev/null | grep -q .; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for nodes to register (10 min)"
+  sleep 15
+done
 kubectl wait --for=condition=Ready node --all --timeout=10m
 log "Cluster is healthy."
 
@@ -217,6 +236,91 @@ log "Applying Let's Encrypt ClusterIssuer..."
 sleep 15
 kubectl apply -f "${ISSUER_MANIFEST}"
 
+# ── CloudNativePG operator ────────────────────────────────────────────────────
+log "Installing CloudNativePG operator..."
+helm repo add cnpg https://cloudnative-pg.github.io/charts --force-update &>/dev/null
+helm repo update &>/dev/null
+
+helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
+  --namespace cnpg-system \
+  --create-namespace \
+  --wait \
+  --timeout 5m
+
+# ── Create teleport namespace (needed for CNPG cluster CR) ────────────────────
+kubectl create namespace teleport --dry-run=client -o yaml | kubectl apply -f -
+
+# ── GHCR image pull secret ────────────────────────────────────────────────────
+# postgres-wal2json is a private GHCR package; nodes need credentials to pull it.
+# Uses the gh CLI token — refresh with: gh auth refresh --scopes write:packages
+log "Creating GHCR pull secret..."
+kubectl create secret docker-registry ghcr-pull-secret \
+  --namespace teleport \
+  --docker-server=ghcr.io \
+  --docker-username=jturner-teleport \
+  --docker-password="$(gh auth token)" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# ── Detect CNPG bootstrap mode ────────────────────────────────────────────────
+# If a base backup exists in S3 from a previous run, use recovery mode so
+# Teleport's data (users, roles, audit events) is preserved across make down/up.
+log "Checking S3 for existing CNPG base backup..."
+BACKUP_EXISTS="false"
+BACKUP_COUNT=$(aws s3 ls "s3://${TELEPORT_PG_WAL_BUCKET}/cnpg/teleport-postgres/base/" \
+  --recursive 2>/dev/null | wc -l || echo "0")
+BACKUP_COUNT="${BACKUP_COUNT//[[:space:]]/}"
+if [[ "${BACKUP_COUNT:-0}" -gt 0 ]]; then
+  BACKUP_EXISTS="true"
+fi
+
+if [[ "${BACKUP_EXISTS}" == "true" ]]; then
+  log "Backup found (${BACKUP_COUNT} objects) — bootstrapping CNPG from S3 (recovery mode)..."
+  kubectl apply -f "${CNPG_RECOVERY_MANIFEST}"
+else
+  log "No backup found — bootstrapping CNPG from scratch (initdb mode)..."
+  kubectl apply -f "${CNPG_INITDB_MANIFEST}"
+fi
+
+# ── Wait for CNPG cluster to be ready ─────────────────────────────────────────
+log "Waiting for PostgreSQL cluster to be ready (~5 min)..."
+ATTEMPTS=0
+until [[ "$(kubectl -n teleport get cluster teleport-postgres \
+    -o jsonpath='{.status.readyInstances}' 2>/dev/null)" == "1" ]]; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for CNPG cluster to be ready (10 min)"
+  log "  (attempt ${ATTEMPTS}/40, retrying in 15s...)"
+  sleep 15
+done
+log "PostgreSQL cluster is ready."
+
+# ── Extract CNPG app password ──────────────────────────────────────────────────
+# CNPG creates a secret named <cluster>-app containing the password for the
+# app user (here: user 'teleport', db 'teleport'). This must be extracted
+# before rendering teleport-values.yaml.tpl.
+log "Extracting CNPG app password..."
+CNPG_PASSWORD=$(kubectl -n teleport get secret teleport-postgres-app \
+  -o jsonpath='{.data.password}' | base64 -d)
+[[ -n "${CNPG_PASSWORD}" ]] || fail "Failed to extract CNPG password from teleport-postgres-app secret"
+export CNPG_PASSWORD
+
+# ── Render Teleport values (deferred: requires CNPG_PASSWORD) ─────────────────
+envsubst < "${ROOT_DIR}/helm/teleport-values.yaml.tpl" > "${TELEPORT_VALUES}"
+
+# ── Teleport Enterprise license ───────────────────────────────────────────────
+log "Applying Enterprise license secret..."
+LICENSE_FILE="${ROOT_DIR}/${TELEPORT_LICENSE_FILE:-license.pem}"
+kubectl -n teleport create secret generic license \
+  --from-file=license.pem="${LICENSE_FILE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# ── Google Workspace SA secret ────────────────────────────────────────────────
+log "Creating Google SA secret..."
+[[ -f "${ROOT_DIR}/${GOOGLE_SA_JSON_FILE}" ]] \
+  || fail "Google SA JSON not found: ${GOOGLE_SA_JSON_FILE} — required for OIDC"
+kubectl -n teleport create secret generic google-sa \
+  --from-file=service-account.json="${ROOT_DIR}/${GOOGLE_SA_JSON_FILE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 # ── Teleport ──────────────────────────────────────────────────────────────────
 log "Installing Teleport..."
 helm repo add teleport https://charts.releases.teleport.dev --force-update &>/dev/null
@@ -228,6 +332,42 @@ helm upgrade --install teleport teleport/teleport-cluster \
   --values "${TELEPORT_VALUES}" \
   --wait \
   --timeout 10m
+
+unset CNPG_PASSWORD
+
+# Defensive ClusterRoleBinding for the proxy pod's ServiceAccount.
+# In standalone mode the auth pod runs kubernetes_service (not proxy), so the
+# chart-managed binding is sufficient — this is kept for forward-compat.
+kubectl apply -f "${ROOT_DIR}/helm/teleport-rbac.yaml"
+
+# ── Demo namespaces ───────────────────────────────────────────────────────────
+# Created to support RBAC role access via {{external.team}} trait.
+for ns in admin engineering devops; do
+  kubectl create namespace "${ns}" --dry-run=client -o yaml | kubectl apply -f -
+done
+log "Applying K8s RBAC bindings for team namespaces..."
+kubectl apply -f "${ROOT_DIR}/teleport/k8s-rbac/namespace-bindings.yaml"
+
+# ── Monitoring stack (kube-prometheus-stack) ──────────────────────────────────
+log "Installing kube-prometheus-stack..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update &>/dev/null
+helm repo update &>/dev/null
+
+helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --values "${ROOT_DIR}/helm/monitoring-values.yaml" \
+  --wait \
+  --timeout 10m
+
+log "Applying Teleport ServiceMonitor..."
+kubectl apply -f "${ROOT_DIR}/helm/teleport-servicemonitor.yaml"
+
+log "Applying Teleport Grafana dashboard..."
+kubectl -n monitoring create configmap grafana-dashboard-teleport \
+  --from-file=teleport-overview.json="${ROOT_DIR}/helm/grafana-dashboard-teleport.json" \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n monitoring label configmap grafana-dashboard-teleport grafana_dashboard=1 --overwrite
 
 # ── Update Route53 DNS ────────────────────────────────────────────────────────
 log "Waiting for LoadBalancer hostname..."
@@ -246,10 +386,16 @@ done
 log "LoadBalancer: ${ELB_HOSTNAME}"
 log "Updating Route53 records..."
 
-# Look up the NLB's canonical hosted zone ID (needed for ALIAS at the zone apex).
+# Look up the ELB's canonical hosted zone ID (needed for ALIAS at the zone apex).
+# Try ALB/NLB first, then fall back to Classic ELB.
 ELB_ZONE_ID=$(aws elbv2 describe-load-balancers \
   --query "LoadBalancers[?DNSName=='${ELB_HOSTNAME}'].CanonicalHostedZoneId" \
   --output text 2>/dev/null || true)
+if [[ -z "${ELB_ZONE_ID}" || "${ELB_ZONE_ID}" == "None" ]]; then
+  ELB_ZONE_ID=$(aws elb describe-load-balancers \
+    --query "LoadBalancerDescriptions[?DNSName=='${ELB_HOSTNAME}'].CanonicalHostedZoneNameID" \
+    --output text 2>/dev/null || true)
+fi
 
 # Zone apex (TELEPORT_DOMAIN) cannot use CNAME — use Route53 ALIAS A record.
 if [[ -n "${ELB_ZONE_ID}" && "${ELB_ZONE_ID}" != "None" ]]; then
@@ -296,13 +442,29 @@ aws route53 change-resource-record-sets \
 EOF
 )"
 
+# ── Apply Teleport config (SSO, RBAC, Login Rules) ────────────────────────────
+log "Applying Teleport config..."
+bash "${SCRIPT_DIR}/apply-teleport-config.sh"
+
+# ── tbot (Machine ID agent) ───────────────────────────────────────────────────
+# tbot must be deployed before approval-bot: it creates the approval-bot-identity
+# secret that the bot mounts. tbot renews the identity continuously so the bot
+# never holds stale credentials.
+log "Deploying tbot (Machine ID agent)..."
+envsubst '${TELEPORT_DOMAIN} ${TELEPORT_VERSION}' \
+  < "${ROOT_DIR}/helm/tbot-deployment.yaml" | kubectl apply -f -
+
+# ── Approval bot ───────────────────────────────────────────────────────────────
+log "Deploying approval bot..."
+envsubst '${TELEPORT_DOMAIN}' < "${ROOT_DIR}/helm/approval-bot-deployment.yaml" | kubectl apply -f -
+
 # ── Done ───────────────────────────────────────────────────────────────────────
 log ""
 unset AWS_CONFIG_FILE
 log "Teleport is ready at: https://${TELEPORT_DOMAIN}"
 log ""
 log "Create your first admin user:"
-log "  kubectl -n teleport exec deploy/teleport -- tctl users add admin --roles=access,editor,auditor"
+log "  kubectl -n teleport exec deploy/teleport-auth -- tctl users add admin --roles=access,editor,auditor"
 log ""
 log "kubectl is configured to use the NLB DNS directly."
 log "To switch to the friendly hostname (requires k8s.${TELEPORT_DOMAIN} in cert SANs):"

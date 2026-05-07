@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# spin-down.sh — Remove the kops cluster. DynamoDB tables and S3 buckets are
-# preserved so data survives and the cluster can be recreated with make up.
+# spin-down.sh — Remove the kops cluster. S3 buckets are preserved so data
+# survives and the cluster can be recreated with make up.
+# Triggers a CNPG base backup before teardown so Postgres state is safe.
 # Run: make down
 set -euo pipefail
 
@@ -39,6 +40,55 @@ export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
 K8S_API_DOMAIN="${K8S_API_DOMAIN:-k8s.${TELEPORT_DOMAIN}}"
 
+# ── Export kubeconfig (needed so kubectl/helm can reach the cluster) ───────────
+log "Exporting kubeconfig..."
+kops export kubeconfig \
+  --name="${CLUSTER_NAME}" \
+  --state="${KOPS_STATE_STORE}" \
+  --admin 2>/dev/null || true
+
+# ── Trigger CNPG base backup before cluster teardown ──────────────────────────
+# This ensures the latest Postgres state is safely in S3 before we destroy nodes.
+# spin-up.sh detects this backup on next run and bootstraps via recovery instead of initdb.
+BACKUP_NAME="pre-teardown-$(date +%Y%m%d%H%M%S)"
+if kubectl -n teleport get cluster teleport-postgres &>/dev/null 2>&1; then
+  log "Triggering CNPG base backup: ${BACKUP_NAME}"
+  kubectl apply -f - <<EOF
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: ${BACKUP_NAME}
+  namespace: teleport
+spec:
+  method: barmanObjectStore
+  cluster:
+    name: teleport-postgres
+EOF
+
+  log "Waiting for backup to complete (up to 5 min)..."
+  ATTEMPTS=0
+  while true; do
+    BACKUP_PHASE=$(kubectl -n teleport get backup "${BACKUP_NAME}" \
+      -o jsonpath='{.status.phase}' 2>/dev/null || true)
+    if [[ "${BACKUP_PHASE}" == "completed" ]]; then
+      log "Backup completed."
+      break
+    elif [[ "${BACKUP_PHASE}" == "failed" ]]; then
+      log "WARNING: Backup entered failed state — data may not be in S3. Proceeding with teardown."
+      break
+    fi
+    ATTEMPTS=$((ATTEMPTS + 1))
+    if [[ $ATTEMPTS -ge 30 ]]; then
+      log "WARNING: Backup timed out after 5 min — proceeding with teardown."
+      break
+    fi
+    log "  (attempt ${ATTEMPTS}/30, retrying in 10s...)"
+    sleep 10
+  done
+else
+  log "No CNPG cluster found — skipping backup."
+fi
+
 # ── Remove K8S API Route53 record ──────────────────────────────────────────────
 log "Removing Route53 record: ${K8S_API_DOMAIN}"
 EXISTING=$(aws route53 list-resource-record-sets \
@@ -46,31 +96,40 @@ EXISTING=$(aws route53 list-resource-record-sets \
   --query "ResourceRecordSets[?Name=='${K8S_API_DOMAIN}.']" \
   --output json 2>/dev/null)
 if [[ "${EXISTING}" != "[]" && -n "${EXISTING}" ]]; then
-  aws route53 change-resource-record-sets \
-    --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
-    --change-batch "$(echo "${EXISTING}" | python3 -c "
+  CHANGE_BATCH=$(echo "${EXISTING}" | python3 -c '
 import json, sys
 records = json.load(sys.stdin)
-print(json.dumps({'Changes': [{'Action': 'DELETE', 'ResourceRecordSet': r} for r in records]}))
-")" 2>/dev/null || true
+print(json.dumps({"Changes": [{"Action": "DELETE", "ResourceRecordSet": r} for r in records]}))
+')
+  aws route53 change-resource-record-sets \
+    --hosted-zone-id "${ROUTE53_HOSTED_ZONE_ID}" \
+    --change-batch "${CHANGE_BATCH}" 2>/dev/null || true
 fi
 
-# ── Export kubeconfig (needed so helm/kubectl can reach the cluster) ───────────
-log "Exporting kubeconfig..."
-kops export kubeconfig \
-  --name="${CLUSTER_NAME}" \
-  --state="${KOPS_STATE_STORE}" \
-  --admin 2>/dev/null || true
+# ── Uninstall monitoring stack ────────────────────────────────────────────────
+log "Uninstalling monitoring stack..."
+helm uninstall monitoring --namespace monitoring 2>/dev/null || true
+kubectl delete namespace monitoring --ignore-not-found --wait=false 2>/dev/null || true
 
-# ── Uninstall Helm releases ────────────────────────────────────────────────────
+# ── Uninstall Teleport ────────────────────────────────────────────────────────
 log "Uninstalling Teleport..."
 helm uninstall teleport --namespace teleport 2>/dev/null || true
 
+# ── Remove CNPG cluster CR ────────────────────────────────────────────────────
+log "Removing CNPG cluster..."
+kubectl -n teleport delete cluster teleport-postgres --ignore-not-found 2>/dev/null || true
+
+# ── Uninstall CNPG operator ───────────────────────────────────────────────────
+log "Uninstalling CloudNativePG operator..."
+helm uninstall cnpg-operator --namespace cnpg-system 2>/dev/null || true
+
+# ── Uninstall cert-manager ────────────────────────────────────────────────────
 log "Uninstalling cert-manager..."
 helm uninstall cert-manager --namespace cert-manager 2>/dev/null || true
 
 log "Waiting for namespaces to terminate..."
 kubectl delete namespace teleport --ignore-not-found --wait=true 2>/dev/null || true
+kubectl delete namespace cnpg-system --ignore-not-found --wait=true 2>/dev/null || true
 kubectl delete namespace cert-manager --ignore-not-found --wait=true 2>/dev/null || true
 
 # ── Delete kops cluster ────────────────────────────────────────────────────────
@@ -82,8 +141,8 @@ kops delete cluster \
 
 log ""
 log "Cluster deleted."
-log "Preserved: DynamoDB tables (${TELEPORT_BACKEND_TABLE}, ${TELEPORT_EVENTS_TABLE})"
-log "Preserved: S3 bucket (${TELEPORT_SESSIONS_BUCKET})"
+log "Preserved: S3 buckets (${TELEPORT_SESSIONS_BUCKET}, ${TELEPORT_PG_WAL_BUCKET})"
+log "  PostgreSQL state is safe in ${TELEPORT_PG_WAL_BUCKET}/cnpg/"
 log ""
 unset AWS_CONFIG_FILE
 log "Spin back up any time with: make up"

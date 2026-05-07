@@ -1,0 +1,9 @@
+kind: login_rule
+version: v1
+metadata:
+  name: google-groups-to-team
+spec:
+  priority: 0
+  traits_map:
+    team:
+      - 'regexp.replace(external.groups, "^([^@]+)@b1tsized\\.tech$", "$1")'

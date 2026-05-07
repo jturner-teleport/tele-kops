@@ -1,0 +1,99 @@
+# tbot-deployment.yaml — Machine ID agent that manages the approval-bot's identity.
+# tbot joins Teleport via the Kubernetes join method (approval-bot SA JWT), then
+# writes renewable short-lived certificates to the approval-bot-identity k8s Secret.
+# The approval-bot Deployment mounts that Secret and reads it via LoadIdentityFile.
+#
+# Ordering: apply this before approval-bot-deployment. tbot runs continuously and
+# renews the identity before expiry — approval-bot never holds stale credentials.
+# Processed by spin-up.sh via: envsubst '${TELEPORT_DOMAIN} ${TELEPORT_VERSION}'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tbot-config
+  namespace: teleport
+data:
+  tbot.yaml: |
+    version: v2
+    proxy_server: "${TELEPORT_DOMAIN}:443"
+    onboarding:
+      join_method: kubernetes
+      token: approval-bot-join-token
+    # tbot's own renewable bot certificate (stored in-cluster, not on disk).
+    storage:
+      type: kubernetes_secret
+      name: tbot-approval-bot-state
+    # The identity written here is what approval-bot reads via LoadIdentityFile.
+    outputs:
+      - type: identity
+        destination:
+          type: kubernetes_secret
+          name: approval-bot-identity
+---
+# Role: allow tbot to create/update the two secrets it manages in this namespace.
+# Kubernetes does not support resourceNames for create (resource doesn't exist yet),
+# so create is allowed broadly but scoped to this namespace via Role (not ClusterRole).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tbot-secret-manager
+  namespace: teleport
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch"]
+    resourceNames: ["tbot-approval-bot-state", "approval-bot-identity"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tbot-secret-manager
+  namespace: teleport
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tbot-secret-manager
+subjects:
+  - kind: ServiceAccount
+    name: approval-bot
+    namespace: teleport
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tbot
+  namespace: teleport
+  labels:
+    app: tbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tbot
+  template:
+    metadata:
+      labels:
+        app: tbot
+    spec:
+      serviceAccountName: approval-bot
+      containers:
+        - name: tbot
+          image: public.ecr.aws/gravitational/teleport-ent-distroless:${TELEPORT_VERSION}
+          command: ["tbot", "start", "--config=/etc/tbot/tbot.yaml"]
+          volumeMounts:
+            - name: tbot-config
+              mountPath: /etc/tbot
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: tbot-config
+          configMap:
+            name: tbot-config

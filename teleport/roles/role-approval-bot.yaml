@@ -1,0 +1,15 @@
+kind: role
+version: v7
+metadata:
+  name: role-approval-bot
+spec:
+  allow:
+    rules:
+      - resources:
+          - access_request
+        verbs:
+          - list
+          - read
+          - update
+  options:
+    max_session_ttl: 10h0m0s

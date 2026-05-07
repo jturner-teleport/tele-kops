@@ -1,0 +1,7 @@
+kind: bot
+version: v1
+metadata:
+  name: ci-bot
+spec:
+  roles:
+    - ci-bot-role

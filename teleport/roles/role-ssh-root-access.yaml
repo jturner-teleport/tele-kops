@@ -1,0 +1,13 @@
+kind: role
+version: v7
+metadata:
+  name: role-ssh-root-access
+spec:
+  allow:
+    logins:
+      - root
+    node_labels:
+      '*': '*'
+  options:
+    max_session_ttl: 1h0m0s
+    forward_agent: false

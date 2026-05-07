@@ -1,6 +1,6 @@
 .PHONY: bootstrap up down pause resume delete clean-cluster kubeconfig
 
-## bootstrap  Run once to create S3 buckets and DynamoDB tables
+## bootstrap  Run once to create S3 buckets (kops state, sessions, pgwal)
 bootstrap:
 	@bash bootstrap/bootstrap.sh
 
@@ -8,7 +8,7 @@ bootstrap:
 up:
 	@bash scripts/spin-up.sh
 
-## down       Tear down the cluster (data persists in DynamoDB + S3)
+## down       Tear down the cluster (data persists in S3: sessions + pgwal)
 down:
 	@bash scripts/spin-down.sh
 
@@ -20,7 +20,7 @@ pause:
 resume:
 	@bash scripts/resume.sh
 
-## delete        Nuclear teardown: removes cluster AND all persistent data (S3, DynamoDB)
+## delete        Nuclear teardown: removes cluster AND all persistent data (S3 buckets)
 delete:
 	@bash scripts/delete.sh
 
