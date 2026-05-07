@@ -1,0 +1,13 @@
+kind: token
+version: v2
+metadata:
+  name: github-ci-token
+spec:
+  roles:
+    - Bot
+  bot_name: ci-bot
+  join_method: github
+  github:
+    allow:
+      - repository: jturner-teleport/tele-kops
+        workflow: teleport-apply.yml

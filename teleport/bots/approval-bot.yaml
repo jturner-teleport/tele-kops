@@ -1,0 +1,7 @@
+kind: bot
+version: v1
+metadata:
+  name: approval-bot
+spec:
+  roles:
+    - role-approval-bot

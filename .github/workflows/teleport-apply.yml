@@ -1,0 +1,63 @@
+name: Apply Teleport Config
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'teleport/**'
+  workflow_dispatch:
+
+jobs:
+  apply:
+    name: Apply Teleport config via tctl
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Teleport
+        uses: teleport-actions/setup@v1
+        with:
+          version: "${{ vars.TELEPORT_VERSION || '18' }}"
+
+      - name: Authenticate with Teleport (Machine ID)
+        uses: teleport-actions/auth@v2
+        with:
+          proxy: ${{ vars.TELEPORT_PROXY }}
+          token: github-ci-token
+          # Request a short-lived certificate with tctl permissions
+          certificate-ttl: 30m
+
+      - name: Apply Teleport config
+        env:
+          TELEPORT_DOMAIN: ${{ vars.TELEPORT_DOMAIN }}
+          GOOGLE_ADMIN_EMAIL: ${{ vars.GOOGLE_ADMIN_EMAIL }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: |
+          # Install envsubst
+          sudo apt-get install -y --no-install-recommends gettext-base
+
+          # Apply static YAML files (roles, rules, k8s-rbac are NOT applied via tctl here — k8s-rbac goes via kubectl)
+          for f in teleport/roles/*.yaml; do
+            echo "Applying $f"
+            tctl apply -f "$f"
+          done
+
+          for f in teleport/rules/*.yaml; do
+            echo "Applying $f"
+            tctl apply -f "$f"
+          done
+
+          # Bot and token resources
+          for f in teleport/bots/*.yaml teleport/tokens/*.yaml; do
+            echo "Applying $f"
+            tctl apply -f "$f"
+          done
+
+          # OIDC connector template (requires envsubst)
+          envsubst < teleport/connectors/google-oidc.yaml.tpl | tctl apply -f -
+          echo "All Teleport config applied."

@@ -1,0 +1,46 @@
+# namespace-bindings.yaml — K8s RBAC for Teleport team groups.
+# Teleport's role-kube-access sets kubernetes_groups: ['{{external.team}}'].
+# These RoleBindings grant the K8s group (e.g. 'engineering') edit access
+# to its matching namespace so users can actually work after Teleport auth.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: admin
+subjects:
+  - kind: Group
+    name: admin
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: engineering
+subjects:
+  - kind: Group
+    name: engineering
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: devops
+subjects:
+  - kind: Group
+    name: devops
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io

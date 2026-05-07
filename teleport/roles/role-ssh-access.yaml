@@ -1,0 +1,15 @@
+kind: role
+version: v7
+metadata:
+  name: role-ssh-access
+spec:
+  allow:
+    logins:
+      - ubuntu
+      - ec2-user
+      - '{{internal.logins}}'
+    node_labels:
+      '*': '*'
+  options:
+    max_session_ttl: 4h0m0s
+    forward_agent: false

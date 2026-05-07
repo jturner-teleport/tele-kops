@@ -1,0 +1,35 @@
+name: Build approval bot image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - bot/**
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: bot
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/approval-bot:latest
+            ghcr.io/${{ github.repository_owner }}/approval-bot:${{ github.sha }}

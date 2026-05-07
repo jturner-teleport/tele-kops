@@ -1,0 +1,22 @@
+kind: role
+version: v7
+metadata:
+  name: role-base
+spec:
+  allow:
+    # Allow users to request SSH access roles (auto-approved for ssh-access by bot in Phase 6)
+    request:
+      roles:
+        - role-ssh-access
+        - role-ssh-root-access
+      thresholds:
+        - approve: 1
+          deny: 1
+    logins:
+      - '{{internal.logins}}'
+    rules:
+      - resources: ['event', 'session']
+        verbs: ['list', 'read']
+  options:
+    max_session_ttl: 8h0m0s
+    request_access: optional

@@ -1,0 +1,18 @@
+# teleport-servicemonitor.yaml — Prometheus ServiceMonitor for Teleport auth+proxy metrics.
+# Teleport exposes /metrics on port 3000 (diagnostics endpoint) when diag_addr is set.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: teleport
+  namespace: teleport
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: teleport-cluster
+  endpoints:
+    - targetPort: 3000
+      path: /metrics
+      interval: 30s
+      scheme: http

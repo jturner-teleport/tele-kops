@@ -55,63 +55,19 @@ create_bucket() {
     --tagging "TagSet=[{Key=teleport.dev/creator,Value=${LETSENCRYPT_EMAIL}},{Key=KubernetesCluster,Value=${CLUSTER_NAME}}]"
 }
 
-# ── kops state store ───────────────────────────────────────────────────────────
+# ── k0ps state store ───────────────────────────────────────────────────────────
 create_bucket "${KOPS_STATE_BUCKET}"
 
 # ── Teleport session recordings ────────────────────────────────────────────────
 create_bucket "${TELEPORT_SESSIONS_BUCKET}"
 
-# ── DynamoDB: cluster backend ──────────────────────────────────────────────────
-log "Creating DynamoDB table: ${TELEPORT_BACKEND_TABLE}"
-aws dynamodb create-table \
-  --region "${AWS_REGION}" \
-  --table-name "${TELEPORT_BACKEND_TABLE}" \
-  --attribute-definitions \
-    AttributeName=HashKey,AttributeType=S \
-    AttributeName=FullPath,AttributeType=S \
-  --key-schema \
-    AttributeName=HashKey,KeyType=HASH \
-    AttributeName=FullPath,KeyType=RANGE \
-  --billing-mode PAY_PER_REQUEST \
-  --tags \
-    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
-    Key=KubernetesCluster,Value="${CLUSTER_NAME}" \
-  2>/dev/null || log "  Table already exists, skipping"
+# ── CNPG WAL archive and base backups ─────────────────────────────────────────
+# CloudNativePG uses this bucket for continuous WAL archiving and scheduled base
+# backups. It is the persistence layer for the in-cluster PostgreSQL database —
+# the cluster can be destroyed and recreated and Postgres state is preserved here.
+create_bucket "${TELEPORT_PG_WAL_BUCKET}"
 
-# Reconcile tags on existing table (create-table is skipped if it already exists).
-aws dynamodb tag-resource \
-  --region "${AWS_REGION}" \
-  --resource-arn "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_BACKEND_TABLE}" \
-  --tags \
-    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
-    Key=KubernetesCluster,Value="${CLUSTER_NAME}"
-
-# ── DynamoDB: audit log ────────────────────────────────────────────────────────
-log "Creating DynamoDB table: ${TELEPORT_EVENTS_TABLE}"
-aws dynamodb create-table \
-  --region "${AWS_REGION}" \
-  --table-name "${TELEPORT_EVENTS_TABLE}" \
-  --attribute-definitions \
-    AttributeName=SessionID,AttributeType=S \
-    AttributeName=EventIndex,AttributeType=N \
-  --key-schema \
-    AttributeName=SessionID,KeyType=HASH \
-    AttributeName=EventIndex,KeyType=RANGE \
-  --billing-mode PAY_PER_REQUEST \
-  --tags \
-    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
-    Key=KubernetesCluster,Value="${CLUSTER_NAME}" \
-  2>/dev/null || log "  Table already exists, skipping"
-
-# Reconcile tags on existing table.
-aws dynamodb tag-resource \
-  --region "${AWS_REGION}" \
-  --resource-arn "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_EVENTS_TABLE}" \
-  --tags \
-    Key=teleport.dev/creator,Value="${LETSENCRYPT_EMAIL}" \
-    Key=KubernetesCluster,Value="${CLUSTER_NAME}"
-
-# ── kops deployer role ─────────────────────────────────────────────────────────
+# ── k0ps deployer role ─────────────────────────────────────────────────────────
 # A dedicated automation role that scripts assume before running kops. Using a
 # named IAM role (rather than the AWSReservedSSO_Admin SSO role) satisfies SCPs
 # that restrict sensitive actions to non-human automation roles.
@@ -485,4 +441,5 @@ log "Bootstrap complete."
 log ""
 log "Next steps:"
 log "  1. Ensure config.env is filled in (copied from config.env.example)"
-log "  2. Run: make up"
+log "  2. Push docker/Dockerfile to trigger GHCR image build (GitHub Actions)"
+log "  3. Run: make up"

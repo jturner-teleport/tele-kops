@@ -1,0 +1,20 @@
+# teleport-rbac.yaml — Defensive ClusterRoleBinding for the proxy ServiceAccount.
+# In standalone mode the auth pod runs kubernetes_service (not the proxy), so
+# the chart-managed binding for SA 'teleport' (auth) is sufficient. This
+# binding for SA 'teleport-proxy' is kept for forward-compat if proxy ever
+# re-enables kubernetes_service.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: teleport-proxy
+  labels:
+    app.kubernetes.io/name: teleport-cluster
+    app.kubernetes.io/instance: teleport
+subjects:
+- kind: ServiceAccount
+  name: teleport-proxy
+  namespace: teleport
+roleRef:
+  kind: ClusterRole
+  name: teleport
+  apiGroup: rbac.authorization.k8s.io

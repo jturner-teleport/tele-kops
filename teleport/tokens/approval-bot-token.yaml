@@ -1,0 +1,12 @@
+kind: token
+version: v2
+metadata:
+  name: approval-bot-token
+spec:
+  roles:
+    - Bot
+  bot_name: approval-bot
+  join_method: kubernetes
+  kubernetes:
+    allow:
+      - service_account: "teleport:approval-bot"

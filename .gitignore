@@ -1,9 +1,13 @@
 config.env
+license.pem
+.config/
 *.swp
 *.swo
 .DS_Store
 tmp/
 .claude/
+.agents/
+skills-lock.json
 
 # kops generated files
 kubeconfig
@@ -12,3 +16,10 @@ out/
 # rendered manifests (templates are *.yaml.tpl; bare *.yaml would be accidental output)
 kops/*.yaml
 helm/*.yaml
+# source files in helm/ that are NOT rendered outputs — keep tracked
+!helm/monitoring-values.yaml
+!helm/teleport-servicemonitor.yaml
+!helm/grafana-dashboard-teleport.json
+!helm/approval-bot-deployment.yaml
+!helm/tbot-deployment.yaml
+!helm/teleport-rbac.yaml

@@ -58,8 +58,8 @@ spec:
     masters: public
     nodes: public
 
-  # Instance profile policies — grants Teleport pods (DynamoDB + S3) and
-  # cert-manager (Route53 DNS-01) access without static credentials.
+  # Instance profile policies — grants node pods (CNPG S3 WAL, Teleport sessions,
+  # cert-manager Route53 DNS-01) access without static credentials.
   additionalPolicies:
     node: |
       [
@@ -76,50 +76,6 @@ spec:
         {
           "Effect": "Allow",
           "Action": [
-            "dynamodb:BatchGetItem",
-            "dynamodb:BatchWriteItem",
-            "dynamodb:ConditionCheckItem",
-            "dynamodb:CreateTable",
-            "dynamodb:DeleteItem",
-            "dynamodb:DescribeContinuousBackups",
-            "dynamodb:DescribeTable",
-            "dynamodb:DescribeTimeToLive",
-            "dynamodb:GetItem",
-            "dynamodb:ListTagsOfResource",
-            "dynamodb:PutItem",
-            "dynamodb:Query",
-            "dynamodb:Scan",
-            "dynamodb:TagResource",
-            "dynamodb:TransactGetItems",
-            "dynamodb:TransactWriteItems",
-            "dynamodb:UpdateContinuousBackups",
-            "dynamodb:UpdateItem",
-            "dynamodb:UpdateTable",
-            "dynamodb:UpdateTimeToLive"
-          ],
-          "Resource": [
-            "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_BACKEND_TABLE}",
-            "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_EVENTS_TABLE}",
-            "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_BACKEND_TABLE}/index/*",
-            "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_EVENTS_TABLE}/index/*"
-          ]
-        },
-        {
-          "Effect": "Allow",
-          "Action": [
-            "dynamodb:DescribeStream",
-            "dynamodb:GetRecords",
-            "dynamodb:GetShardIterator",
-            "dynamodb:ListStreams"
-          ],
-          "Resource": [
-            "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_BACKEND_TABLE}/stream/*",
-            "arn:aws:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_EVENTS_TABLE}/stream/*"
-          ]
-        },
-        {
-          "Effect": "Allow",
-          "Action": [
             "s3:ListBucket",
             "s3:GetBucketVersioning",
             "s3:GetEncryptionConfiguration",
@@ -131,6 +87,22 @@ spec:
           "Resource": [
             "arn:aws:s3:::${TELEPORT_SESSIONS_BUCKET}",
             "arn:aws:s3:::${TELEPORT_SESSIONS_BUCKET}/*"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject",
+            "s3:ListBucket",
+            "s3:GetBucketLocation",
+            "s3:GetBucketVersioning",
+            "s3:GetEncryptionConfiguration"
+          ],
+          "Resource": [
+            "arn:aws:s3:::${TELEPORT_PG_WAL_BUCKET}",
+            "arn:aws:s3:::${TELEPORT_PG_WAL_BUCKET}/*"
           ]
         }
       ]
@@ -158,20 +130,20 @@ metadata:
     kops.k8s.io/cluster: ${CLUSTER_NAME}
   name: nodes-${AWS_AZ}
 spec:
-  machineType: t3.medium
+  machineType: t3.large
   maxSize: ${WORKER_MAX}
   minSize: ${WORKER_MIN}
   mixedInstancesPolicy:
     instances:
-    - t3.medium
     - t3.large
+    - t3.xlarge
     onDemandAboveBase: 0
     onDemandBase: 0
     spotAllocationStrategy: capacity-optimized
   role: Node
   subnets:
   - ${AWS_AZ}
-  # Allow pods to reach EC2 IMDS for IAM credentials (e.g. Teleport → DynamoDB).
+  # Allow pods to reach EC2 IMDS for IAM credentials (e.g. CNPG → S3, Teleport → S3).
   # AWS defaults to hop limit 1 (instance only); pods need limit 2.
   instanceMetadata:
     httpPutResponseHopLimit: 2
