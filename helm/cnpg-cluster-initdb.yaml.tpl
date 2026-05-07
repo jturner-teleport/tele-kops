@@ -20,6 +20,19 @@ spec:
   storage:
     size: 10Gi
 
+  # Declarative role + database management for the Access Graph user.
+  # The 'access_graph' user owns the 'access_graph' database (defined as a
+  # postgresql.cnpg.io/v1 Database resource in helm/cnpg-access-graph-db.yaml).
+  # The user's password is read from the 'access-graph-pg-creds' Secret created
+  # by spin-up.sh.
+  managed:
+    roles:
+      - name: access_graph
+        ensure: present
+        login: true
+        passwordSecret:
+          name: access-graph-pg-creds
+
   bootstrap:
     initdb:
       database: teleport

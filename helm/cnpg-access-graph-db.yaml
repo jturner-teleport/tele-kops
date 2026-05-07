@@ -1,0 +1,14 @@
+# cnpg-access-graph-db.yaml — Database CRD for the Access Graph (TAG) backend.
+# The 'access_graph' user is created via spec.managed.roles[] on the main CNPG
+# cluster (helm/cnpg-cluster-{initdb,recovery}.yaml.tpl). This Database resource
+# tells CNPG to ensure the 'access_graph' DB exists, owned by that user.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: access-graph
+  namespace: teleport
+spec:
+  name: access_graph
+  owner: access_graph
+  cluster:
+    name: teleport-postgres

@@ -1,0 +1,13 @@
+kind: token
+version: v2
+metadata:
+  name: grafana-app-agent-token
+spec:
+  roles:
+    - App
+  join_method: kubernetes
+  kubernetes:
+    allow:
+      # ServiceAccount = "<namespace>:<helm-release-name>".
+      # The teleport-kube-agent chart names its SA after the release.
+      - service_account: "teleport:grafana-agent"

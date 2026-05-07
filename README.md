@@ -216,6 +216,8 @@ This takes ~20 minutes and:
 9. Creates Route53 records pointing to the Teleport NLB
 10. Applies Teleport RBAC roles, Login Rules, and Google OIDC connector via `tctl`
 11. Deploys the access-request approval bot
+12. Installs `teleport-access-graph` (Identity Security) with a CNPG-backed Postgres database and cert-manager-issued in-cluster TLS
+13. Installs a `teleport-kube-agent` registering Grafana behind Teleport's `app_service` (accessible at `https://grafana.<TELEPORT_DOMAIN>`)
 
 When complete:
 

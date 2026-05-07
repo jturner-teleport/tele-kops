@@ -1,0 +1,13 @@
+# role-grafana-access — grants access to apps labeled `tier: ops`.
+# Currently applies to the Grafana app (registered by helm/grafana-agent-values.yaml.tpl).
+# Naturally extends to future operations-team apps via the same `tier: ops` label.
+kind: role
+version: v7
+metadata:
+  name: role-grafana-access
+spec:
+  allow:
+    app_labels:
+      tier: ops
+  options:
+    max_session_ttl: 8h0m0s

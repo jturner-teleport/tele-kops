@@ -261,6 +261,48 @@ kubectl create secret docker-registry ghcr-pull-secret \
   --docker-password="$(gh auth token)" \
   --dry-run=client -o yaml | kubectl apply -f -
 
+# ── Access Graph: bootstrap in-cluster TLS via cert-manager self-signed CA ────
+# Creates two secrets in the teleport namespace (asynchronously via cert-manager):
+#   - access-graph-ca:  self-signed CA (mounted by teleport auth as ca.pem)
+#   - access-graph-tls: TLS leaf for TAG's gRPC (mounted by TAG)
+# We don't wait here; we'll poll for the secrets right before installing Teleport.
+log "Bootstrapping Access Graph TLS via cert-manager self-signed Issuer..."
+kubectl apply -f "${ROOT_DIR}/helm/access-graph-cert.yaml"
+
+# ── Access Graph: Postgres credentials Secret for the 'access_graph' user ─────
+# CNPG reads this Secret via spec.managed.roles[].passwordSecret to set the
+# user's password on each cluster reconcile (including after recovery from S3
+# backup, where the recovered DB has a stale hash). The same password is
+# encoded in the access-graph-pg-uri Secret used by TAG.
+#
+# Idempotency: reuse the existing Secret's password if it's already there
+# (e.g., on re-runs of `make up` or after a teleport namespace recovery).
+# Generating a fresh password on every run would cause a window where TAG's
+# in-flight uri Secret has a different password from the DB.
+if EXISTING_PW=$(kubectl -n teleport get secret access-graph-pg-creds \
+    -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null) \
+    && [[ -n "${EXISTING_PW}" ]]; then
+  log "Reusing existing access-graph-pg-creds password."
+  ACCESS_GRAPH_PG_PASSWORD="${EXISTING_PW}"
+else
+  log "Generating new access-graph-pg-creds password."
+  ACCESS_GRAPH_PG_PASSWORD=$(openssl rand -hex 24)
+fi
+export ACCESS_GRAPH_PG_PASSWORD
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: access-graph-pg-creds
+  namespace: teleport
+  labels:
+    cnpg.io/reload: "true"
+type: kubernetes.io/basic-auth
+stringData:
+  username: access_graph
+  password: "${ACCESS_GRAPH_PG_PASSWORD}"
+EOF
+
 # ── Detect CNPG bootstrap mode ────────────────────────────────────────────────
 # If a base backup exists in S3 from a previous run, use recovery mode so
 # Teleport's data (users, roles, audit events) is preserved across make down/up.
@@ -292,6 +334,40 @@ until [[ "$(kubectl -n teleport get cluster teleport-postgres \
   sleep 15
 done
 log "PostgreSQL cluster is ready."
+
+# ── Access Graph: create the access_graph database in CNPG ────────────────────
+log "Creating access_graph database in CNPG..."
+kubectl apply -f "${ROOT_DIR}/helm/cnpg-access-graph-db.yaml"
+ATTEMPTS=0
+until kubectl -n teleport get database/access-graph -o jsonpath='{.status.applied}' 2>/dev/null | grep -q true; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  [[ $ATTEMPTS -ge 24 ]] && fail "Timed out waiting for access-graph database to reconcile"
+  sleep 5
+done
+log "access_graph database ready."
+
+# ── Access Graph: postgres URI Secret used by TAG ─────────────────────────────
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: access-graph-pg-uri
+  namespace: teleport
+type: Opaque
+stringData:
+  uri: "postgres://access_graph:${ACCESS_GRAPH_PG_PASSWORD}@teleport-postgres-rw.teleport.svc.cluster.local:5432/access_graph?sslmode=require"
+EOF
+
+# ── Access Graph: wait for cert-manager to issue TLS secrets ──────────────────
+log "Waiting for cert-manager to issue Access Graph TLS secrets..."
+ATTEMPTS=0
+until kubectl -n teleport get secret access-graph-ca >/dev/null 2>&1 && \
+      kubectl -n teleport get secret access-graph-tls >/dev/null 2>&1; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  [[ $ATTEMPTS -ge 30 ]] && fail "Timed out waiting for Access Graph TLS secrets"
+  sleep 5
+done
+log "Access Graph TLS secrets ready."
 
 # ── Extract CNPG app password ──────────────────────────────────────────────────
 # CNPG creates a secret named <cluster>-app containing the password for the
@@ -445,6 +521,54 @@ EOF
 # ── Apply Teleport config (SSO, RBAC, Login Rules) ────────────────────────────
 log "Applying Teleport config..."
 bash "${SCRIPT_DIR}/apply-teleport-config.sh"
+
+# ── Access Graph (TAG) — Identity Security backend ────────────────────────────
+# The auth pod's access_graph block (in helm/teleport-values.yaml.tpl) already
+# points at the in-cluster TAG Service; auth was logging connection retries.
+# Now extract Teleport's host CA, render TAG values, and helm-install TAG.
+log "Extracting Teleport host CA for Access Graph trust..."
+HOST_CA=$(kubectl -n teleport exec deploy/teleport-auth -c teleport -- \
+  tctl get cert_authorities --format=json 2>/dev/null \
+  | python3 -c '
+import json, sys, base64
+data = json.load(sys.stdin)
+for ca in data:
+    if ca.get("spec", {}).get("type") != "host":
+        continue
+    for keypair in ca["spec"].get("active_keys", {}).get("tls", []):
+        cert_b64 = keypair.get("cert", "")
+        if cert_b64:
+            print(base64.b64decode(cert_b64).decode().rstrip())
+            sys.exit(0)
+')
+[[ -n "${HOST_CA}" ]] || fail "Failed to extract Teleport host CA from auth pod"
+# Indent each line by 4 spaces so it embeds cleanly under the YAML | block.
+HOST_CA="$(echo "${HOST_CA}" | sed 's/^/    /')"
+export HOST_CA
+
+ACCESS_GRAPH_VALUES="${TMPDIR_WORK}/access-graph-values.yaml"
+envsubst < "${ROOT_DIR}/helm/access-graph-values.yaml.tpl" > "${ACCESS_GRAPH_VALUES}"
+unset HOST_CA ACCESS_GRAPH_PG_PASSWORD
+
+log "Installing teleport-access-graph (Identity Security)..."
+helm upgrade --install teleport-access-graph teleport/teleport-access-graph \
+  --version 1.29.7 \
+  --namespace teleport \
+  --values "${ACCESS_GRAPH_VALUES}" \
+  --wait \
+  --timeout 5m
+
+# ── Grafana app agent — registers Grafana behind Teleport's app_service ───────
+# Apps appear at https://<app-name>.${TELEPORT_DOMAIN} after Google SSO.
+log "Installing teleport-kube-agent (grafana-agent)..."
+GRAFANA_AGENT_VALUES="${TMPDIR_WORK}/grafana-agent-values.yaml"
+envsubst < "${ROOT_DIR}/helm/grafana-agent-values.yaml.tpl" > "${GRAFANA_AGENT_VALUES}"
+
+helm upgrade --install grafana-agent teleport/teleport-kube-agent \
+  --namespace teleport \
+  --values "${GRAFANA_AGENT_VALUES}" \
+  --wait \
+  --timeout 5m
 
 # ── tbot (Machine ID agent) ───────────────────────────────────────────────────
 # tbot must be deployed before approval-bot: it creates the approval-bot-identity

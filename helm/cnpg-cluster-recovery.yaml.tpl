@@ -21,6 +21,19 @@ spec:
   storage:
     size: 10Gi
 
+  # Declarative role + database management for the Access Graph user.
+  # See cnpg-cluster-initdb.yaml.tpl for full notes. On recovery from S3
+  # backup, CNPG re-applies the managed role spec — so even if the recovered
+  # DB has a stale password hash for access_graph, CNPG resets it to match
+  # the access-graph-pg-creds Secret.
+  managed:
+    roles:
+      - name: access_graph
+        ensure: present
+        login: true
+        passwordSecret:
+          name: access-graph-pg-creds
+
   bootstrap:
     recovery:
       source: teleport-postgres-backup

@@ -28,15 +28,28 @@ highAvailability:
 podSecurityPolicy:
   enabled: false
 
-# Google Workspace service account JSON for OIDC group fetching.
-# Secret 'google-sa' is created by spin-up.sh from ${GOOGLE_SA_JSON_FILE}.
+# Mounted on both auth and proxy pods (proxy mount is harmless):
+#   - google-sa: Google Workspace SA JSON for OIDC group fetching.
+#     Secret 'google-sa' is created by spin-up.sh from ${GOOGLE_SA_JSON_FILE}.
+#   - access-graph-ca: cert-manager-issued CA cert that signs TAG's TLS cert.
+#     Used only by the auth pod's access_graph.ca config; secret managed by
+#     helm/access-graph-cert.yaml.
 extraVolumes:
   - name: google-sa
     secret:
       secretName: google-sa
+  - name: access-graph-ca
+    secret:
+      secretName: access-graph-ca
+      items:
+        - key: tls.crt
+          path: ca.pem
 extraVolumeMounts:
   - name: google-sa
     mountPath: /var/run/secrets/google-sa
+    readOnly: true
+  - name: access-graph-ca
+    mountPath: /var/run/access-graph
     readOnly: true
 
 # Auth pod overrides — Postgres backend, S3 sessions, proxy peering tunnel strategy,
@@ -62,12 +75,29 @@ auth:
       tunnel_strategy:
         type: proxy_peering
         agent_connection_count: 1
+    # Identity Security / Access Graph (TAG) integration. The auth pod streams
+    # cluster events to TAG over gRPC. Endpoint is the in-cluster TAG Service;
+    # ca.pem is signed by the cert-manager self-signed CA created in
+    # helm/access-graph-cert.yaml. If TAG isn't yet deployed, auth logs warnings
+    # but otherwise operates normally — TAG is a non-blocking optional integration.
+    access_graph:
+      enabled: true
+      endpoint: teleport-access-graph.teleport.svc.cluster.local:443
+      ca: /var/run/access-graph/ca.pem
 
 # Proxy pod overrides — proxy peering listener (chart exposes :3021 on the pod
 # already when enterprise=true, but doesn't set peer_listen_addr).
+# The proxy ALSO needs the access_graph block: when a user opens the Identity
+# Security UI, the proxy serves /webapi/access-graph and proxies requests to
+# TAG. Without this block, proxy returns 404 "access graph service is not
+# reachable" (lib/web/accessgraph.go).
 proxy:
   teleportConfig:
     teleport:
       diag_addr: "0.0.0.0:3000"
     proxy_service:
       peer_listen_addr: "0.0.0.0:3021"
+    access_graph:
+      enabled: true
+      endpoint: teleport-access-graph.teleport.svc.cluster.local:443
+      ca: /var/run/access-graph/ca.pem

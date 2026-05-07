@@ -23,3 +23,5 @@ helm/*.yaml
 !helm/approval-bot-deployment.yaml
 !helm/tbot-deployment.yaml
 !helm/teleport-rbac.yaml
+!helm/access-graph-cert.yaml
+!helm/cnpg-access-graph-db.yaml
