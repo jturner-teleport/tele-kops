@@ -570,6 +570,17 @@ helm upgrade --install grafana-agent teleport/teleport-kube-agent \
   --wait \
   --timeout 5m
 
+# ── Prometheus app agent — registers Prometheus UI behind Teleport's app_service ─
+log "Installing teleport-kube-agent (prometheus-agent)..."
+PROMETHEUS_AGENT_VALUES="${TMPDIR_WORK}/prometheus-agent-values.yaml"
+envsubst < "${ROOT_DIR}/helm/prometheus-agent-values.yaml.tpl" > "${PROMETHEUS_AGENT_VALUES}"
+
+helm upgrade --install prometheus-agent teleport/teleport-kube-agent \
+  --namespace teleport \
+  --values "${PROMETHEUS_AGENT_VALUES}" \
+  --wait \
+  --timeout 5m
+
 # ── tbot (Machine ID agent) ───────────────────────────────────────────────────
 # tbot must be deployed before approval-bot: it creates the approval-bot-identity
 # secret that the bot mounts. tbot renews the identity continuously so the bot

@@ -1,6 +1,9 @@
 # role-grafana-access — grants access to apps labeled `tier: ops`.
-# Currently applies to the Grafana app (registered by helm/grafana-agent-values.yaml.tpl).
+# Currently applies to:
+#   - Grafana app (helm/grafana-agent-values.yaml.tpl)
+#   - Prometheus app (helm/prometheus-agent-values.yaml.tpl)
 # Naturally extends to future operations-team apps via the same `tier: ops` label.
+# Name is historical (this was originally Grafana-only); kept for backwards-compat.
 kind: role
 version: v7
 metadata:

@@ -119,6 +119,8 @@ log "Uninstalling teleport-access-graph..."
 helm uninstall teleport-access-graph --namespace teleport 2>/dev/null || true
 log "Uninstalling grafana-agent (teleport-kube-agent)..."
 helm uninstall grafana-agent --namespace teleport 2>/dev/null || true
+log "Uninstalling prometheus-agent (teleport-kube-agent)..."
+helm uninstall prometheus-agent --namespace teleport 2>/dev/null || true
 
 # ── Uninstall Teleport ────────────────────────────────────────────────────────
 log "Uninstalling Teleport..."
