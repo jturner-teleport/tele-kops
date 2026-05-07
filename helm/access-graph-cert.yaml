@@ -1,0 +1,65 @@
+# access-graph-cert.yaml — cert-manager bootstrap for in-cluster TLS between
+# the main Teleport auth pod and the self-hosted Access Graph (TAG) pod.
+#
+# Let's Encrypt cannot issue certs for *.svc.cluster.local, so we run a
+# self-signed CA in-cluster:
+#   1. SelfSigned Issuer
+#   2. CA Certificate (self-signed) → secret 'access-graph-ca' contains the CA cert
+#   3. CA Issuer using that CA → issues TAG's TLS cert
+#   4. TLS Certificate for TAG → secret 'access-graph-tls' (mounted by TAG)
+#
+# Teleport auth's `access_graph.ca:` field reads the CA from secret
+# 'access-graph-ca' (key tls.crt) so it can verify TAG's certificate.
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: access-graph-selfsigned
+  namespace: teleport
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: access-graph-ca
+  namespace: teleport
+spec:
+  secretName: access-graph-ca
+  isCA: true
+  commonName: access-graph-ca
+  duration: 87600h     # 10 years
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: access-graph-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: access-graph-ca-issuer
+  namespace: teleport
+spec:
+  ca:
+    secretName: access-graph-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: access-graph-tls
+  namespace: teleport
+spec:
+  secretName: access-graph-tls
+  duration: 8760h      # 1 year
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - teleport-access-graph.teleport.svc.cluster.local
+    - teleport-access-graph.teleport.svc
+    - teleport-access-graph
+  issuerRef:
+    name: access-graph-ca-issuer
+    kind: Issuer

@@ -15,9 +15,35 @@ prometheus:
 
 grafana:
   adminPassword: "changeme"
+  # Grafana is exposed via Teleport's app_service at https://grafana.teleport.jwturner.dev
+  # (separate teleport-kube-agent deployment registers Grafana as an application).
+  #
+  # auth.proxy: trust the X-WEBAUTH-* headers set by the teleport-kube-agent's
+  # app rewrite (helm/grafana-agent-values.yaml.tpl). Users authenticate once via
+  # Teleport SSO; Grafana auto-creates a user from the Teleport identity.
   grafana.ini:
     server:
-      root_url: "%(protocol)s://%(domain)s/grafana"
+      root_url: "https://grafana.teleport.jwturner.dev/"
+      serve_from_sub_path: false
+    auth:
+      disable_login_form: true            # hide local login (Teleport handles auth)
+      disable_signout_menu: false
+    auth.proxy:
+      enabled: true
+      header_name: X-WEBAUTH-USER
+      header_property: username
+      auto_sign_up: true
+      sync_ttl: 60
+      # The Role header lets us set/refresh the Grafana org role on each login
+      # (Editor by default in auto_sign_up; this overrides per-request).
+      headers: "Email:X-WEBAUTH-EMAIL Name:X-WEBAUTH-NAME Role:X-WEBAUTH-ROLE"
+      enable_login_token: false
+    auth.anonymous:
+      enabled: false
+    users:
+      # All Teleport-authorized users (gated at the app-proxy layer by
+      # role-grafana-access) land as Admin in Grafana.
+      auto_assign_org_role: Admin
   sidecar:
     dashboards:
       enabled: true

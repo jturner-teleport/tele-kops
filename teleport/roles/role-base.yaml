@@ -17,6 +17,11 @@ spec:
     rules:
       - resources: ['event', 'session']
         verbs: ['list', 'read']
+      # Identity Security / Access Graph — lets the user see the
+      # "Identity Security" item + Graph Explorer in the Web UI. The graph
+      # itself enforces per-user visibility based on the user's other roles.
+      - resources: ['access_graph']
+        verbs: ['list', 'read']
   options:
     max_session_ttl: 8h0m0s
     request_access: optional

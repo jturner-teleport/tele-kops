@@ -111,6 +111,15 @@ log "Uninstalling monitoring stack..."
 helm uninstall monitoring --namespace monitoring 2>/dev/null || true
 kubectl delete namespace monitoring --ignore-not-found --wait=false 2>/dev/null || true
 
+# ── Uninstall Access Graph + Grafana app agent ───────────────────────────────
+# These depend on the main teleport release (auth/proxy services), so uninstall
+# first. Namespace deletion below would clean them up too, but explicit uninstall
+# runs the chart's pre-delete hooks and lets connections drain.
+log "Uninstalling teleport-access-graph..."
+helm uninstall teleport-access-graph --namespace teleport 2>/dev/null || true
+log "Uninstalling grafana-agent (teleport-kube-agent)..."
+helm uninstall grafana-agent --namespace teleport 2>/dev/null || true
+
 # ── Uninstall Teleport ────────────────────────────────────────────────────────
 log "Uninstalling Teleport..."
 helm uninstall teleport --namespace teleport 2>/dev/null || true

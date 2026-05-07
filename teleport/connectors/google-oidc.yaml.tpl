@@ -28,3 +28,10 @@ spec:
       roles:
         - role-base
         - role-kube-access
+    # devops group additionally gets role-grafana-access (apps with tier=ops label).
+    - claim: groups
+      value: 'devops@b1tsized.tech'
+      roles:
+        - role-base
+        - role-kube-access
+        - role-grafana-access
