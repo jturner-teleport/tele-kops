@@ -581,6 +581,12 @@ helm upgrade --install prometheus-agent teleport/teleport-kube-agent \
   --wait \
   --timeout 5m
 
+# ── SSH node agent — Ubuntu container that joins as a Teleport SSH node ──────
+# Demonstrates the role-ssh-access (auto-approved) + role-ssh-root-access
+# (manual approval) escalation flow.
+log "Deploying SSH node..."
+envsubst < "${ROOT_DIR}/helm/ssh-node-deployment.yaml.tpl" | kubectl apply -f -
+
 # ── tbot (Machine ID agent) ───────────────────────────────────────────────────
 # tbot must be deployed before approval-bot: it creates the approval-bot-identity
 # secret that the bot mounts. tbot renews the identity continuously so the bot

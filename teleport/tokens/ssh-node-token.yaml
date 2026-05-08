@@ -1,0 +1,13 @@
+kind: token
+version: v2
+metadata:
+  name: ssh-node-token
+spec:
+  roles:
+    - Node
+  join_method: kubernetes
+  kubernetes:
+    allow:
+      # ServiceAccount = "<namespace>:<name>" — must match the SA used by
+      # helm/ssh-node-deployment.yaml.tpl (which we name 'ssh-node').
+      - service_account: "teleport:ssh-node"
