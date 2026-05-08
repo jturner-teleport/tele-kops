@@ -1,3 +1,6 @@
+# role-ssh-root-access — privileged root SSH access, scoped to the user's team(s).
+# NOT auto-approved — requires manual human review (demonstrates the access-request
+# escalation pattern). Requested via role-base's request.roles list.
 kind: role
 version: v7
 metadata:
@@ -6,8 +9,9 @@ spec:
   allow:
     logins:
       - root
+    # Same per-team scoping as role-ssh-access.
     node_labels:
-      '*': '*'
+      team: '{{external.team}}'
   options:
     max_session_ttl: 1h0m0s
     forward_agent: false

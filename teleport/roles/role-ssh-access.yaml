@@ -1,3 +1,6 @@
+# role-ssh-access — non-root SSH access, scoped to the user's team(s).
+# Auto-approved by the approval-bot (helm/approval-bot-deployment.yaml).
+# Requested via role-base's request.roles list.
 kind: role
 version: v7
 metadata:
@@ -6,10 +9,11 @@ spec:
   allow:
     logins:
       - ubuntu
-      - ec2-user
-      - '{{internal.logins}}'
+    # Templated per team: only nodes whose `team` label matches one of the
+    # user's external.team trait values are accessible. Multi-valued team
+    # traits (Google groups → team via login rule) are matched in turn.
     node_labels:
-      '*': '*'
+      team: '{{external.team}}'
   options:
     max_session_ttl: 4h0m0s
     forward_agent: false

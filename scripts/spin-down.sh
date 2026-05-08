@@ -121,6 +121,8 @@ log "Uninstalling grafana-agent (teleport-kube-agent)..."
 helm uninstall grafana-agent --namespace teleport 2>/dev/null || true
 log "Uninstalling prometheus-agent (teleport-kube-agent)..."
 helm uninstall prometheus-agent --namespace teleport 2>/dev/null || true
+log "Removing SSH node deployment..."
+kubectl -n teleport delete deployment/ssh-node configmap/ssh-node-config sa/ssh-node podmonitor/ssh-node --ignore-not-found 2>/dev/null || true
 
 # ── Uninstall Teleport ────────────────────────────────────────────────────────
 log "Uninstalling Teleport..."
