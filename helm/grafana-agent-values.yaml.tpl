@@ -44,7 +44,14 @@ apps:
         # The Teleport user is auto-signed-up in Grafana on first request.
         # X-WEBAUTH-ROLE refreshes the Grafana org role on every login —
         # all users with role-grafana-access get Admin (gated at Teleport).
-        - "X-WEBAUTH-USER: {{email.local(external.email)}}"
+        #
+        # X-WEBAUTH-USER uses {{external.email}} so the Grafana login
+        # matches the user's email. SSO users get their Google email; the
+        # local admin user has `email: admin@b1tsized.tech` set as a trait
+        # (so `external.email` resolves for both).
+        # The {{teleport.user}} placeholder is NOT supported in app rewrite
+        # headers in v18 (only in role/login-rule templates).
+        - "X-WEBAUTH-USER: {{external.email}}"
         - "X-WEBAUTH-EMAIL: {{external.email}}"
         - "X-WEBAUTH-NAME: {{external.name}}"
         - "X-WEBAUTH-ROLE: Admin"

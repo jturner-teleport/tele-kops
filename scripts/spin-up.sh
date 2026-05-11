@@ -439,11 +439,25 @@ helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
 log "Applying Teleport ServiceMonitor..."
 kubectl apply -f "${ROOT_DIR}/helm/teleport-servicemonitor.yaml"
 
-log "Applying Teleport Grafana dashboard..."
+log "Applying Teleport Grafana dashboards..."
+# Upstream "Self-hosted Teleport Dashboard" (gravitational/teleport)
 kubectl -n monitoring create configmap grafana-dashboard-teleport \
   --from-file=teleport-overview.json="${ROOT_DIR}/helm/grafana-dashboard-teleport.json" \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n monitoring label configmap grafana-dashboard-teleport grafana_dashboard=1 --overwrite
+
+# Custom dashboards (one ConfigMap per dashboard, picked up by Grafana sidecar
+# via the grafana_dashboard=1 label). Submitted to gravitational/rev-tech.
+for dash in "${ROOT_DIR}"/helm/dashboards/*.json; do
+  [[ -f "${dash}" ]] || continue
+  NAME="$(basename "${dash}" .json)"
+  CM_NAME="grafana-dashboard-${NAME}"
+  log "  Applying ${CM_NAME}..."
+  kubectl -n monitoring create configmap "${CM_NAME}" \
+    --from-file="${NAME}.json=${dash}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl -n monitoring label configmap "${CM_NAME}" grafana_dashboard=1 --overwrite >/dev/null
+done
 
 # ── Update Route53 DNS ────────────────────────────────────────────────────────
 log "Waiting for LoadBalancer hostname..."
@@ -604,8 +618,27 @@ log ""
 unset AWS_CONFIG_FILE
 log "Teleport is ready at: https://${TELEPORT_DOMAIN}"
 log ""
-log "Create your first admin user:"
-log "  kubectl -n teleport exec deploy/teleport-auth -- tctl users add admin --roles=access,editor,auditor"
+log "Create your first admin user (1/2 — invitation + standard traits):"
+log "  kubectl -n teleport exec deploy/teleport-auth -- tctl users add admin \\"
+log "    --roles=access,editor,auditor \\"
+log "    --logins=ubuntu,root \\"
+log "    --kubernetes-groups=system:masters"
+log ""
+log "Create your first admin user (2/2 — add email trait for Grafana app SSO):"
+log "  kubectl -n teleport exec deploy/teleport-auth -i -- tctl create -f - --force <<'EOF'"
+log "    kind: user"
+log "    version: v2"
+log "    metadata: {name: admin}"
+log "    spec:"
+log "      roles: [access, editor, auditor]"
+log "      traits:"
+log "        logins: [ubuntu, root]"
+log "        kubernetes_groups: [system:masters]"
+log "        email: [admin@${TELEPORT_DOMAIN#teleport.}]"
+log "  EOF"
+log ""
+log "  (logins + kubernetes-groups enable SSH + kubectl. email enables auto-SSO"
+log "   into Grafana's app_service via X-WEBAUTH-USER={{external.email}}.)"
 log ""
 log "kubectl is configured to use the NLB DNS directly."
 log "To switch to the friendly hostname (requires k8s.${TELEPORT_DOMAIN} in cert SANs):"

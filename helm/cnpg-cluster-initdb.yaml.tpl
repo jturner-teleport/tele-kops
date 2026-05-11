@@ -20,6 +20,15 @@ spec:
   storage:
     size: 10Gi
 
+  # CNPG operator creates a PodMonitor selecting this cluster's pods so
+  # kube-prometheus-stack scrapes pg_stat_*, pg_replication_*, and
+  # cnpg_collector_* metrics on port 9187. Powers the Postgres panels on
+  # the teleport-ops-health dashboard.
+  # (CNPG 1.27+ deprecates this in favor of a hand-rolled PodMonitor; still
+  # supported in our version and simpler.)
+  monitoring:
+    enablePodMonitor: true
+
   # Declarative role + database management for the Access Graph user.
   # The 'access_graph' user owns the 'access_graph' database (defined as a
   # postgresql.cnpg.io/v1 Database resource in helm/cnpg-access-graph-db.yaml).
