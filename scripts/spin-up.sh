@@ -26,6 +26,9 @@ fi
 if [[ -z "${AWS_ACCOUNT_ID:-}" ]]; then
   AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 fi
+# Export so envsubst on cluster.yaml.tpl (IAC IAM ARNs) and
+# access-graph-values.yaml.tpl picks it up.
+export AWS_ACCOUNT_ID
 KOPS_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${PREFIX}-kops-deployer"
 log "Assuming kops deployer role: ${KOPS_ROLE_ARN}"
 read -r AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN < <(
@@ -55,6 +58,257 @@ log "Cluster : ${CLUSTER_NAME}"
 log "Account : ${AWS_ACCOUNT_ID}"
 log "Region  : ${AWS_REGION}"
 log "Domain  : ${TELEPORT_DOMAIN}"
+
+# ── Identity Activity Center (IAC) AWS infrastructure ────────────────────────
+# Provisions the AWS resources TAG needs to persist Teleport audit events:
+# KMS key, SQS main queue + DLQ, two S3 buckets (long-term + transient),
+# Glue database + table, Athena workgroup. Mirrors the canonical Teleport
+# terraform module:
+#   gh api repos/gravitational/teleport/contents/examples/identity-activity-center/identity_activity_center.tf
+#
+# Done before kops envsubst so the new IAM-policy ARN substitutions in
+# cluster.yaml.tpl resolve. Every step is idempotent (re-runs of make up
+# are safe on an existing cluster).
+log "Provisioning Identity Activity Center AWS resources..."
+
+# 1. KMS key + alias. Everything else encrypts at rest with this key.
+if EXISTING_KEY_ID=$(aws kms describe-key \
+    --key-id "alias/${TELEPORT_IAC_KMS_ALIAS}" \
+    --query 'KeyMetadata.KeyId' --output text 2>/dev/null) \
+    && [[ -n "${EXISTING_KEY_ID}" ]]; then
+  IAC_KMS_KEY_ID="${EXISTING_KEY_ID}"
+  log "  KMS alias exists: alias/${TELEPORT_IAC_KMS_ALIAS} (key ${IAC_KMS_KEY_ID})"
+else
+  log "  Creating KMS key for IAC encryption..."
+  IAC_KMS_KEY_ID=$(aws kms create-key \
+    --description "Teleport Identity Activity Center encryption key" \
+    --tags "TagKey=teleport.dev/creator,TagValue=${LETSENCRYPT_EMAIL}" \
+           "TagKey=KubernetesCluster,TagValue=${CLUSTER_NAME}" \
+    --query 'KeyMetadata.KeyId' --output text)
+  aws kms enable-key-rotation --key-id "${IAC_KMS_KEY_ID}"
+  aws kms create-alias \
+    --alias-name "alias/${TELEPORT_IAC_KMS_ALIAS}" \
+    --target-key-id "${IAC_KMS_KEY_ID}"
+  log "  Created KMS key ${IAC_KMS_KEY_ID} (alias: ${TELEPORT_IAC_KMS_ALIAS})"
+fi
+IAC_KMS_KEY_ARN="arn:aws:kms:${AWS_REGION}:${AWS_ACCOUNT_ID}:key/${IAC_KMS_KEY_ID}"
+export IAC_KMS_KEY_ARN
+
+# 2. SQS DLQ — failed messages from main queue land here for 7-day retention.
+# create-queue is idempotent: returns the existing URL when the queue exists
+# with matching attributes.
+log "  Creating SQS DLQ: ${TELEPORT_IAC_SQS_DLQ}"
+IAC_SQS_DLQ_URL=$(aws sqs create-queue \
+  --queue-name "${TELEPORT_IAC_SQS_DLQ}" \
+  --attributes "KmsMasterKeyId=${IAC_KMS_KEY_ARN},KmsDataKeyReusePeriodSeconds=300,MessageRetentionPeriod=604800" \
+  --query 'QueueUrl' --output text)
+IAC_SQS_DLQ_ARN=$(aws sqs get-queue-attributes \
+  --queue-url "${IAC_SQS_DLQ_URL}" \
+  --attribute-names QueueArn \
+  --query 'Attributes.QueueArn' --output text)
+
+# 3. SQS main queue — wired to DLQ via redrive policy.
+# aws sqs create-queue's "Key=Val,Key=Val" shorthand can't carry a
+# JSON-valued attribute (RedrivePolicy quoting collides with the parser),
+# so pass --attributes as a JSON document constructed via python3.
+log "  Creating SQS main queue: ${TELEPORT_IAC_SQS_QUEUE}"
+IAC_QUEUE_ATTRS=$(IAC_KMS_KEY_ARN="${IAC_KMS_KEY_ARN}" IAC_SQS_DLQ_ARN="${IAC_SQS_DLQ_ARN}" python3 -c '
+import json, os
+print(json.dumps({
+    "KmsMasterKeyId": os.environ["IAC_KMS_KEY_ARN"],
+    "KmsDataKeyReusePeriodSeconds": "300",
+    "RedrivePolicy": json.dumps({
+        "deadLetterTargetArn": os.environ["IAC_SQS_DLQ_ARN"],
+        "maxReceiveCount": "20",
+    }),
+}))')
+IAC_SQS_QUEUE_URL=$(aws sqs create-queue \
+  --queue-name "${TELEPORT_IAC_SQS_QUEUE}" \
+  --attributes "${IAC_QUEUE_ATTRS}" \
+  --query 'QueueUrl' --output text)
+export IAC_SQS_QUEUE_URL
+
+# 4. S3 long-term bucket — Parquet events partitioned by tenant_id/event_date.
+_iac_create_bucket() {
+  local bucket="$1"
+  if aws s3api head-bucket --bucket "${bucket}" 2>/dev/null; then
+    log "  S3 bucket exists: ${bucket}"
+    return 0
+  fi
+  log "  Creating S3 bucket: ${bucket}"
+  if [[ "${AWS_REGION}" == "us-east-1" ]]; then
+    aws s3api create-bucket --bucket "${bucket}" --region "${AWS_REGION}" >/dev/null
+  else
+    aws s3api create-bucket \
+      --bucket "${bucket}" \
+      --region "${AWS_REGION}" \
+      --create-bucket-configuration "LocationConstraint=${AWS_REGION}" >/dev/null
+  fi
+}
+
+_iac_secure_bucket() {
+  # SSE-KMS + bucket-key (cuts KMS API costs ~100x for high-write workloads),
+  # BucketOwnerEnforced ownership, versioning enabled, all public access blocked.
+  local bucket="$1"
+  aws s3api put-bucket-encryption \
+    --bucket "${bucket}" \
+    --server-side-encryption-configuration "$(cat <<EOF
+{
+  "Rules": [{
+    "ApplyServerSideEncryptionByDefault": {
+      "SSEAlgorithm": "aws:kms",
+      "KMSMasterKeyID": "${IAC_KMS_KEY_ARN}"
+    },
+    "BucketKeyEnabled": true
+  }]
+}
+EOF
+)" >/dev/null
+  aws s3api put-bucket-ownership-controls \
+    --bucket "${bucket}" \
+    --ownership-controls 'Rules=[{ObjectOwnership=BucketOwnerEnforced}]' >/dev/null
+  aws s3api put-bucket-versioning \
+    --bucket "${bucket}" \
+    --versioning-configuration Status=Enabled >/dev/null
+  aws s3api put-public-access-block \
+    --bucket "${bucket}" \
+    --public-access-block-configuration \
+    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" >/dev/null
+}
+
+_iac_create_bucket "${TELEPORT_IAC_LONG_TERM_BUCKET}"
+_iac_secure_bucket "${TELEPORT_IAC_LONG_TERM_BUCKET}"
+
+# 5. S3 transient bucket — Athena query results + large_files staging.
+# Lifecycle: expire all objects after 60 days (query results have no long-term value).
+_iac_create_bucket "${TELEPORT_IAC_TRANSIENT_BUCKET}"
+_iac_secure_bucket "${TELEPORT_IAC_TRANSIENT_BUCKET}"
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket "${TELEPORT_IAC_TRANSIENT_BUCKET}" \
+  --lifecycle-configuration "$(cat <<'EOF'
+{
+  "Rules": [{
+    "ID": "delete_after_60_days",
+    "Status": "Enabled",
+    "Filter": {},
+    "Expiration": {"Days": 60}
+  }]
+}
+EOF
+)" >/dev/null
+
+# 6. Glue database — logical catalog container for the events table.
+log "  Creating Glue database: ${TELEPORT_IAC_GLUE_DB}"
+aws glue create-database \
+  --database-input "$(cat <<EOF
+{
+  "Name": "${TELEPORT_IAC_GLUE_DB}",
+  "Description": "Teleport Identity Activity Center events"
+}
+EOF
+)" 2>/dev/null || true
+
+# 7. Glue table — schema mirrors gravitational/teleport's canonical IAC module
+#    (29 columns + 2 partition keys, partition projection on tenant_id + event_date).
+#    NOTE: $${tenant_id}/$${event_date} are LITERAL Athena partition projection
+#    placeholders, not shell variables. Wrapped in single quotes to prevent bash
+#    expansion. Idempotent: errors out silently if the table already exists.
+log "  Creating Glue table: ${TELEPORT_IAC_GLUE_TABLE}"
+IAC_TABLE_INPUT=$(cat <<EOF
+{
+  "Name": "${TELEPORT_IAC_GLUE_TABLE}",
+  "Description": "Identity activity events table with partition projection for efficient querying",
+  "TableType": "EXTERNAL_TABLE",
+  "Parameters": {
+    "EXTERNAL": "TRUE",
+    "classification": "parquet",
+    "parquet.compression": "SNAPPY",
+    "projection.enabled": "true",
+    "projection.tenant_id.type": "injected",
+    "projection.event_date.type": "date",
+    "projection.event_date.format": "yyyy-MM-dd",
+    "projection.event_date.interval": "1",
+    "projection.event_date.interval.unit": "DAYS",
+    "projection.event_date.range": "NOW-4YEARS,NOW",
+    "storage.location.template": "s3://${TELEPORT_IAC_LONG_TERM_BUCKET}/data/\${tenant_id}/\${event_date}/"
+  },
+  "StorageDescriptor": {
+    "Location": "s3://${TELEPORT_IAC_LONG_TERM_BUCKET}/data/",
+    "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+    "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+    "SerdeInfo": {
+      "Name": "identity-events-parquet-serde",
+      "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+      "Parameters": {"serialization.format": "1"}
+    },
+    "Columns": [
+      {"Name": "event_source",        "Type": "string"},
+      {"Name": "identity",            "Type": "string"},
+      {"Name": "identity_kind",       "Type": "string"},
+      {"Name": "identity_id",         "Type": "string"},
+      {"Name": "token",               "Type": "string"},
+      {"Name": "action",              "Type": "string"},
+      {"Name": "origin",              "Type": "string"},
+      {"Name": "status",              "Type": "string"},
+      {"Name": "ip",                  "Type": "string"},
+      {"Name": "city",                "Type": "string"},
+      {"Name": "country",             "Type": "string"},
+      {"Name": "region",              "Type": "string"},
+      {"Name": "latitude",            "Type": "double"},
+      {"Name": "longitude",           "Type": "double"},
+      {"Name": "target_resource",     "Type": "string"},
+      {"Name": "target_kind",         "Type": "string"},
+      {"Name": "target_location",     "Type": "string"},
+      {"Name": "target_id",           "Type": "string"},
+      {"Name": "user_agent",          "Type": "string"},
+      {"Name": "event_type",          "Type": "string"},
+      {"Name": "event_time",          "Type": "timestamp"},
+      {"Name": "uid",                 "Type": "string"},
+      {"Name": "event_data",          "Type": "string"},
+      {"Name": "aws_account_id",      "Type": "string"},
+      {"Name": "aws_service",         "Type": "string"},
+      {"Name": "github_organization", "Type": "string"},
+      {"Name": "github_repo",         "Type": "string"},
+      {"Name": "okta_org",            "Type": "string"},
+      {"Name": "teleport_cluster",    "Type": "string"}
+    ]
+  },
+  "PartitionKeys": [
+    {"Name": "tenant_id",  "Type": "string"},
+    {"Name": "event_date", "Type": "date"}
+  ]
+}
+EOF
+)
+aws glue create-table \
+  --database-name "${TELEPORT_IAC_GLUE_DB}" \
+  --table-input "${IAC_TABLE_INPUT}" 2>/dev/null \
+  || aws glue update-table \
+    --database-name "${TELEPORT_IAC_GLUE_DB}" \
+    --table-input "${IAC_TABLE_INPUT}" >/dev/null 2>&1 || true
+
+# 8. Athena workgroup — 20 GB scan cap per query, engine v3, encrypted results.
+log "  Creating Athena workgroup: ${TELEPORT_IAC_WORKGROUP}"
+IAC_WG_CONFIG=$(cat <<EOF
+{
+  "BytesScannedCutoffPerQuery": 21474836480,
+  "EngineVersion": {"SelectedEngineVersion": "Athena engine version 3"},
+  "ResultConfiguration": {
+    "OutputLocation": "s3://${TELEPORT_IAC_TRANSIENT_BUCKET}/results/",
+    "EncryptionConfiguration": {
+      "EncryptionOption": "SSE_KMS",
+      "KmsKey": "${IAC_KMS_KEY_ARN}"
+    }
+  }
+}
+EOF
+)
+aws athena create-work-group \
+  --name "${TELEPORT_IAC_WORKGROUP}" \
+  --description "Teleport Identity Activity Center analytics" \
+  --configuration "${IAC_WG_CONFIG}" 2>/dev/null || true
+
+log "Identity Activity Center resources ready."
 
 # ── Temp files (cleaned up on exit) ───────────────────────────────────────────
 TMPDIR_WORK=$(mktemp -d)

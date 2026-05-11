@@ -108,6 +108,75 @@ spec:
             "arn:aws:s3:::${TELEPORT_PG_WAL_BUCKET}",
             "arn:aws:s3:::${TELEPORT_PG_WAL_BUCKET}/*"
           ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "kms:GenerateDataKey",
+            "kms:Decrypt"
+          ],
+          "Resource": "*",
+          "Condition": {
+            "ForAnyValue:StringEquals": {
+              "kms:ResourceAliases": "alias/${TELEPORT_IAC_KMS_ALIAS}"
+            }
+          }
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "sqs:ReceiveMessage",
+            "sqs:DeleteMessage",
+            "sqs:SendMessage"
+          ],
+          "Resource": [
+            "arn:aws:sqs:${AWS_REGION}:${AWS_ACCOUNT_ID}:${TELEPORT_IAC_SQS_QUEUE}"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket",
+            "s3:ListBucketMultipartUploads",
+            "s3:GetBucketLocation",
+            "s3:ListBucketVersions"
+          ],
+          "Resource": [
+            "arn:aws:s3:::${TELEPORT_IAC_LONG_TERM_BUCKET}",
+            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:PutObject",
+            "s3:GetObject",
+            "s3:GetObjectVersion",
+            "s3:DeleteObject",
+            "s3:DeleteObjectVersion",
+            "s3:ListMultipartUploadParts",
+            "s3:AbortMultipartUpload"
+          ],
+          "Resource": [
+            "arn:aws:s3:::${TELEPORT_IAC_LONG_TERM_BUCKET}/data/*",
+            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}/results/*",
+            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}/large_files/*"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "glue:GetTable",
+            "athena:StartQueryExecution",
+            "athena:GetQueryResults",
+            "athena:GetQueryExecution"
+          ],
+          "Resource": [
+            "arn:aws:athena:${AWS_REGION}:${AWS_ACCOUNT_ID}:workgroup/${TELEPORT_IAC_WORKGROUP}",
+            "arn:aws:glue:${AWS_REGION}:${AWS_ACCOUNT_ID}:catalog",
+            "arn:aws:glue:${AWS_REGION}:${AWS_ACCOUNT_ID}:database/${TELEPORT_IAC_GLUE_DB}",
+            "arn:aws:glue:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/${TELEPORT_IAC_GLUE_DB}/${TELEPORT_IAC_GLUE_TABLE}"
+          ]
         }
       ]
 
