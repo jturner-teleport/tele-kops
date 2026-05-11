@@ -11,5 +11,13 @@ spec:
           - list
           - read
           - update
+      # The bot enumerates access_lists + their members to decide whether
+      # a requester qualifies for auto-approval (e.g. devops-kube-access
+      # grants the marker role-kube-access-auto-approved to its members).
+      - resources:
+          - access_list
+        verbs:
+          - list
+          - read
   options:
     max_session_ttl: 10h0m0s
