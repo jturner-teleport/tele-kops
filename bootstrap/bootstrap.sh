@@ -422,7 +422,7 @@ KOPS_POLICY=$(cat <<POLICY
         "s3:HeadBucket",
         "s3:ListBucket",
         "s3:ListBucketVersions",
-        "s3:PutBucketEncryption",
+        "s3:PutEncryptionConfiguration",
         "s3:PutBucketOwnershipControls",
         "s3:PutBucketPublicAccessBlock",
         "s3:PutBucketVersioning",
