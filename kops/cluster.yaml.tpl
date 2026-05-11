@@ -158,9 +158,9 @@ spec:
             "s3:AbortMultipartUpload"
           ],
           "Resource": [
-            "arn:aws:s3:::${TELEPORT_IAC_LONG_TERM_BUCKET}/long-term/data/*",
-            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}/transient/results/*",
-            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}/transient/large_files/*"
+            "arn:aws:s3:::${TELEPORT_IAC_LONG_TERM_BUCKET}/data/*",
+            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}/results/*",
+            "arn:aws:s3:::${TELEPORT_IAC_TRANSIENT_BUCKET}/large_files/*"
           ]
         },
         {
