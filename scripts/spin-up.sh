@@ -108,11 +108,23 @@ IAC_SQS_DLQ_ARN=$(aws sqs get-queue-attributes \
   --query 'Attributes.QueueArn' --output text)
 
 # 3. SQS main queue — wired to DLQ via redrive policy.
+# aws sqs create-queue's "Key=Val,Key=Val" shorthand can't carry a
+# JSON-valued attribute (RedrivePolicy quoting collides with the parser),
+# so pass --attributes as a JSON document constructed via python3.
 log "  Creating SQS main queue: ${TELEPORT_IAC_SQS_QUEUE}"
-IAC_REDRIVE=$(printf '{"deadLetterTargetArn":"%s","maxReceiveCount":"20"}' "${IAC_SQS_DLQ_ARN}")
+IAC_QUEUE_ATTRS=$(IAC_KMS_KEY_ARN="${IAC_KMS_KEY_ARN}" IAC_SQS_DLQ_ARN="${IAC_SQS_DLQ_ARN}" python3 -c '
+import json, os
+print(json.dumps({
+    "KmsMasterKeyId": os.environ["IAC_KMS_KEY_ARN"],
+    "KmsDataKeyReusePeriodSeconds": "300",
+    "RedrivePolicy": json.dumps({
+        "deadLetterTargetArn": os.environ["IAC_SQS_DLQ_ARN"],
+        "maxReceiveCount": "20",
+    }),
+}))')
 IAC_SQS_QUEUE_URL=$(aws sqs create-queue \
   --queue-name "${TELEPORT_IAC_SQS_QUEUE}" \
-  --attributes "KmsMasterKeyId=${IAC_KMS_KEY_ARN},KmsDataKeyReusePeriodSeconds=300,RedrivePolicy=${IAC_REDRIVE}" \
+  --attributes "${IAC_QUEUE_ATTRS}" \
   --query 'QueueUrl' --output text)
 export IAC_SQS_QUEUE_URL
 
