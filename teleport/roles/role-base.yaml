@@ -4,9 +4,31 @@ metadata:
   name: role-base
 spec:
   allow:
-    # No standing privileges. Users with role-base have NO logins, NO kube
-    # access, NO app access — they can only request the three other roles.
-    # See teleport/roles/role-{kube,ssh,ssh-root}-access.yaml.
+    # No standing USE privileges, but full visibility into every registered
+    # Teleport resource (nodes, kube clusters, apps, databases, desktops).
+    # Users can browse the resource list in the Web UI to figure out what
+    # they want to request access to. They still can't connect/exec/etc.
+    # because we don't set logins, kubernetes_groups, db_users, app_labels-
+    # backed app access etc.
+    app_labels:
+      '*': '*'
+    node_labels:
+      '*': '*'
+    kubernetes_labels:
+      '*': '*'
+    db_labels:
+      '*': '*'
+    windows_desktop_labels:
+      '*': '*'
+    # Lets the Web UI list namespaces + pods inside any kube cluster so users
+    # can see what's available to request. Verbs are list/get only — no
+    # exec, no logs, no portforward. Combined with no kubernetes_groups, the
+    # K8s API will still 403 most reads.
+    kubernetes_resources:
+      - kind: '*'
+        name: '*'
+        namespace: '*'
+        verbs: ['list', 'get']
     request:
       roles:
         - role-kube-access
