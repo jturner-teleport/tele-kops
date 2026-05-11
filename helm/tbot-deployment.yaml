@@ -17,7 +17,7 @@ data:
     proxy_server: "${TELEPORT_DOMAIN}:443"
     onboarding:
       join_method: kubernetes
-      token: approval-bot-join-token
+      token: approval-bot-token
     # tbot's own renewable bot certificate (stored in-cluster, not on disk).
     storage:
       type: kubernetes_secret
