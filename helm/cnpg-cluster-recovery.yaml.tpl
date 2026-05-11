@@ -21,6 +21,11 @@ spec:
   storage:
     size: 10Gi
 
+  # Prometheus scraping via CNPG-managed PodMonitor. See cnpg-cluster-initdb.yaml.tpl
+  # for full notes.
+  monitoring:
+    enablePodMonitor: true
+
   # Declarative role + database management for the Access Graph user.
   # See cnpg-cluster-initdb.yaml.tpl for full notes. On recovery from S3
   # backup, CNPG re-applies the managed role spec — so even if the recovered
