@@ -11,6 +11,7 @@ spec:
           - login_rule
           - token
           - bot
+          - access_list
         verbs:
           - create
           - read

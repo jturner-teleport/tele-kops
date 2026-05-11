@@ -391,6 +391,80 @@ KOPS_POLICY=$(cat <<POLICY
       "Effect": "Allow",
       "Action": "sts:GetCallerIdentity",
       "Resource": "*"
+    },
+    {
+      "Sid": "IACKMS",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateAlias",
+        "kms:CreateKey",
+        "kms:DeleteAlias",
+        "kms:DescribeKey",
+        "kms:EnableKeyRotation",
+        "kms:GenerateDataKey",
+        "kms:ListAliases",
+        "kms:ListResourceTags",
+        "kms:ScheduleKeyDeletion",
+        "kms:TagResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IACS3Buckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:HeadBucket",
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+        "s3:PutBucketEncryption",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketVersioning",
+        "s3:PutLifecycleConfiguration",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${PREFIX}-tele-iac-events",
+        "arn:aws:s3:::${PREFIX}-tele-iac-events/*",
+        "arn:aws:s3:::${PREFIX}-tele-iac-transient",
+        "arn:aws:s3:::${PREFIX}-tele-iac-transient/*"
+      ]
+    },
+    {
+      "Sid": "IACGlue",
+      "Effect": "Allow",
+      "Action": [
+        "glue:CreateDatabase",
+        "glue:CreateTable",
+        "glue:DeleteDatabase",
+        "glue:DeleteTable",
+        "glue:GetDatabase",
+        "glue:GetTable",
+        "glue:UpdateDatabase",
+        "glue:UpdateTable"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IACAthena",
+      "Effect": "Allow",
+      "Action": [
+        "athena:CreateWorkGroup",
+        "athena:DeleteWorkGroup",
+        "athena:GetWorkGroup",
+        "athena:ListWorkGroups",
+        "athena:UpdateWorkGroup"
+      ],
+      "Resource": "*"
     }
   ]
 }
