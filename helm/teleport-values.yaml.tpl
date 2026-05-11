@@ -84,6 +84,13 @@ auth:
       enabled: true
       endpoint: teleport-access-graph.teleport.svc.cluster.local:443
       ca: /var/run/access-graph/ca.pem
+      # Forward Teleport audit log events to Access Graph for long-term retention
+      # and cross-platform correlation (Identity Activity Center feature). Requires
+      # TAG v1.28.0+ (we run 1.29.7). If TAG's IAC isn't fully configured with the
+      # AWS Athena/S3/SQS stack, events are received but may not persist long-term
+      # — basic forwarding still works.
+      audit_log:
+        enabled: true
 
 # Proxy pod overrides — proxy peering listener (chart exposes :3021 on the pod
 # already when enterprise=true, but doesn't set peer_listen_addr).
@@ -101,3 +108,10 @@ proxy:
       enabled: true
       endpoint: teleport-access-graph.teleport.svc.cluster.local:443
       ca: /var/run/access-graph/ca.pem
+      # Forward Teleport audit log events to Access Graph for long-term retention
+      # and cross-platform correlation (Identity Activity Center feature). Requires
+      # TAG v1.28.0+ (we run 1.29.7). If TAG's IAC isn't fully configured with the
+      # AWS Athena/S3/SQS stack, events are received but may not persist long-term
+      # — basic forwarding still works.
+      audit_log:
+        enabled: true
