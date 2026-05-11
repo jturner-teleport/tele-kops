@@ -1,0 +1,25 @@
+# devops-kube-access — Access List granting the role-kube-access-auto-approved
+# marker role. Membership requires the devops@b1tsized.tech Google group;
+# ownership requires admin@b1tsized.tech. The approval-bot keys off the marker
+# role to auto-approve role-kube-access requests from members.
+kind: access_list
+version: v1
+metadata:
+  name: devops-kube-access
+spec:
+  title: "DevOps Kubernetes Access"
+  description: "Members are auto-approved for role-kube-access requests via the approval-bot. Membership requires Google group devops@b1tsized.tech."
+  owners:
+    - name: jturner@b1tsized.tech
+  membership_requires:
+    traits:
+      groups: ["devops@b1tsized.tech"]
+  ownership_requires:
+    traits:
+      groups: ["admin@b1tsized.tech"]
+  audit:
+    recurrence:
+      frequency: 6months
+  grants:
+    roles:
+      - role-kube-access-auto-approved
