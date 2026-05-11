@@ -176,21 +176,40 @@ ORDER BY (value->'properties'->>'standing_privileges')::int DESC;
 
 ---
 
-### Q2: Dead roles (no members, no escalation references)
+### Q2: Dead roles (no members, no bot impersonators, no JIT path)
 
-Which roles have no users assigned to them and are not the target of any access
-request or reviewer chain? These are dead weight — they increase review surface
-area without providing access to anyone and are candidates for cleanup.
+Which roles have no users assigned to them, no bots impersonating them, and no
+other role that can request escalation to them? These are dead weight — they
+increase review surface area without providing access to anyone and are
+candidates for cleanup.
 
-**Expected output:** One row per unused role with its description.
+Two subtleties:
+
+1. We deliberately do **not** filter on `reviewer_of` edges. Teleport's preset
+   `@teleport-access-approver` role has a `reviewer_of` edge to every role in
+   the cluster, so any filter that excludes roles with incoming `reviewer_of`
+   edges always returns 0 rows.
+2. Access Graph occasionally keeps multiple node records for the same logical
+   role (different `source`/`origin_type` for the same `name`). Only one of
+   those records carries the relationship edges. We therefore aggregate by
+   role **name**, not node id, via a correlated `NOT EXISTS` subquery.
+
+**Expected output:** One row per unused role with its description. On a fresh
+install you'll see ~14 rows, mostly Teleport presets (`device-admin`,
+`mcp-user`, `okta-access`, `aws-ic-access`, etc.) that we don't use.
 
 ```sql
-SELECT r.value->>'name' AS role,
+SELECT DISTINCT r.value->>'name' AS role,
        r.value->'properties'->'teleport'->>'description' AS description
 FROM nodes r
 WHERE r.kind='identity_group' AND r.subkind='role'
-  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))
-  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))
+  AND NOT EXISTS (
+    SELECT 1 FROM nodes r2
+    JOIN edges e ON e.to_node = r2.id
+    WHERE r2.kind='identity_group' AND r2.subkind='role'
+      AND r2.value->>'name' = r.value->>'name'
+      AND e.kind IN ('member_of','impersonator_of','requester_of')
+  )
 ORDER BY role;
 ```
 

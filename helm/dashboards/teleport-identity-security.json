@@ -456,7 +456,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Roles with no members and no escalation references — dead weight, candidates for cleanup.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT r.id FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))\n    AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))\n) sub\n```",
+      "description": "Count of roles with no users, no bot impersonations, and no JIT escalation path leading to them — candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub\n```",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -513,7 +513,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT r.id FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))\n    AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))\n) sub",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub",
           "refId": "A"
         }
       ],
@@ -1178,7 +1178,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Roles with no members (no direct user or bot assignments) and no references in any escalation chain. Safe to delete.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))\n  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))\nORDER BY role\n```",
+      "description": "Roles with no users, no bot impersonations, and no JIT escalation path leading to them — candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1226,7 +1226,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))\n  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))\nORDER BY role",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role",
           "refId": "A"
         }
       ],
