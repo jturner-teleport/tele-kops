@@ -115,9 +115,12 @@ spec:
             "kms:GenerateDataKey",
             "kms:Decrypt"
           ],
-          "Resource": [
-            "arn:aws:kms:${AWS_REGION}:${AWS_ACCOUNT_ID}:alias/${TELEPORT_IAC_KMS_ALIAS}"
-          ]
+          "Resource": "*",
+          "Condition": {
+            "ForAnyValue:StringEquals": {
+              "kms:ResourceAliases": "alias/${TELEPORT_IAC_KMS_ALIAS}"
+            }
+          }
         },
         {
           "Effect": "Allow",
