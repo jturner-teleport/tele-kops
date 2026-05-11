@@ -29,6 +29,27 @@ grafana:
   # auth.proxy: trust the X-WEBAUTH-* headers set by the teleport-kube-agent's
   # app rewrite (helm/grafana-agent-values.yaml.tpl). Users authenticate once via
   # Teleport SSO; Grafana auto-creates a user from the Teleport identity.
+
+  # Read-only Postgres datasource for the Identity Security dashboard.
+  # access_graph user only has SELECT on the tenant schema (CNPG-managed role).
+  envValueFrom:
+    AG_PG_PASSWORD:
+      secretKeyRef:
+        name: access-graph-pg-creds
+        key: password
+  additionalDataSources:
+    - name: Access Graph
+      type: postgres
+      url: teleport-postgres-rw.teleport.svc.cluster.local:5432
+      user: access_graph
+      access: proxy
+      jsonData:
+        database: access_graph
+        sslmode: require
+        postgresVersion: 1700
+      secureJsonData:
+        password: $AG_PG_PASSWORD
+
   grafana.ini:
     server:
       root_url: "https://grafana.teleport.jwturner.dev/"
