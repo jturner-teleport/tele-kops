@@ -303,6 +303,21 @@ stringData:
   password: "${ACCESS_GRAPH_PG_PASSWORD}"
 EOF
 
+# Grafana (in the monitoring namespace) needs the same credentials to mount the
+# Access Graph Postgres datasource via envValueFrom — duplicate the secret there.
+kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: access-graph-pg-creds
+  namespace: monitoring
+type: kubernetes.io/basic-auth
+stringData:
+  username: access_graph
+  password: "${ACCESS_GRAPH_PG_PASSWORD}"
+EOF
+
 # ── Detect CNPG bootstrap mode ────────────────────────────────────────────────
 # If a base backup exists in S3 from a previous run, use recovery mode so
 # Teleport's data (users, roles, audit events) is preserved across make down/up.
