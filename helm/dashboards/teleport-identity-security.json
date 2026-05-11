@@ -23,34 +23,60 @@
   "panels": [
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "id": 100,
       "title": "Summary",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Total Teleport users known to Access Graph.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Total Teleport users known to Access Graph.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='identity' AND subkind='user'\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
       "id": 1,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -58,7 +84,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -70,28 +99,49 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Total Teleport roles known to Access Graph.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Total Teleport roles known to Access Graph.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='identity_group' AND subkind='role'\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
       "id": 2,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -99,7 +149,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -111,28 +164,49 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Total registered Teleport resources (SSH nodes, kube clusters, apps, databases, desktops).",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Total registered Teleport resources (SSH nodes, kube clusters, apps, databases, desktops).\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='resource'\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
       "id": 3,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -140,7 +214,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -152,31 +229,53 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Open security alerts detected by Access Graph. Any value above 0 warrants investigation.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Open security alerts detected by Access Graph. Any value above 0 warrants investigation.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts WHERE status='OPEN'\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
       "id": 4,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -184,7 +283,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -197,38 +299,68 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
       "id": 101,
       "title": "Risk Indicators",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Users with a standing_privileges score > 0. Standing access is always-on access that doesn't require an access request.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Users with a standing_privileges score > 0. Standing access is always-on access that doesn't require an access request.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='identity' AND subkind='user' AND (value->'properties'->>'standing_privileges')::int > 0\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 1 },
-              { "color": "red", "value": 5 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
       "id": 5,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -236,7 +368,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -248,31 +383,53 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Users whose weakest MFA device is UNSET or empty — no MFA enrolled.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Users whose weakest MFA device is UNSET or empty — no MFA enrolled.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='identity' AND subkind='user' AND value->'properties'->>'weakest_mfa_device_kind' IN ('UNSET','')\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
       "id": 6,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -280,7 +437,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -292,31 +452,53 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Roles with no members and no escalation references — dead weight, candidates for cleanup.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Count of roles with no users, no bot impersonations, and no JIT escalation path leading to them — candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      },
       "id": 7,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -324,11 +506,14 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT r.id FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))\n    AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))\n) sub",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub",
           "refId": "A"
         }
       ],
@@ -336,30 +521,49 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Bot identities that hold impersonation rights over at least one Teleport role.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Bot identities that hold impersonation rights over at least one Teleport role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(DISTINCT from_node) FROM edges WHERE kind='impersonator_of'\n```",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "blue", "value": null }
+              {
+                "color": "blue",
+                "value": null
+              }
             ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 8
+      },
       "id": 8,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showPercentChange": false,
         "textMode": "auto",
         "wideLayout": true
@@ -367,7 +571,10 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -380,25 +587,66 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
       "id": 102,
       "title": "User & Identity Details",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "All users with their standing privilege score, role count, MFA type, crown jewel flag, and lock status. Higher standing score = more sensitive account.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "All users with their standing privilege score, role count, MFA type, crown jewel flag, and lock status. Higher standing score = more sensitive account.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT\n  value->>'name'                                  AS user,\n  value->'properties'->>'standing_privileges'     AS standing,\n  value->'properties'->>'identity_groups'         AS roles_count,\n  value->'properties'->>'weakest_mfa_device_kind' AS mfa,\n  value->'properties'->>'is_crown_jewel'          AS crown_jewel,\n  value->'login_status'->>'is_locked'             AS locked\nFROM nodes WHERE kind='identity' AND subkind='user'\nORDER BY (value->'properties'->>'standing_privileges')::int DESC\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
       "id": 10,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -410,19 +658,55 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Every user's direct SSH logins through their standing role memberships — who can SSH where, and as which UNIX user, without needing an access request.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Every user's direct SSH logins through their standing role memberships — who can SSH where, and as which UNIX user, without needing an access request.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT\n  u.value->>'name' AS user,\n  r.value->>'name' AS role,\n  a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values' AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nWHERE m.kind='member_of'\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
       "id": 11,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -434,19 +718,55 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Bot identities and the Teleport roles they can impersonate. Bot impersonation grants the full permission set of the target role to the machine identity.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Bot identities and the Teleport roles they can impersonate. Bot impersonation grants the full permission set of the target role to the machine identity.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT u.value->>'name' AS bot, r.value->>'name' AS impersonates_role\nFROM edges e\nJOIN nodes u ON u.id=e.from_node\nJOIN nodes r ON r.id=e.to_node\nWHERE e.kind='impersonator_of'\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 23 },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 23
+      },
       "id": 12,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -459,25 +779,66 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
       "id": 103,
       "title": "Access Request & Reviewer Topology",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Which roles can submit access requests for which other (elevated) roles. Maps the JIT escalation topology.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Which roles can submit access requests for which other (elevated) roles. Maps the JIT escalation topology.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT r1.value->>'name' AS base_role, r2.value->>'name' AS can_request\nFROM edges e\nJOIN nodes r1 ON r1.id=e.from_node\nJOIN nodes r2 ON r2.id=e.to_node\nWHERE e.kind='requester_of'\n  AND r1.value->>'name' NOT IN ('requester','okta-requester')\nORDER BY base_role, can_request\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
       "id": 13,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -489,19 +850,55 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "For each requestable role, the set of reviewer roles that can approve it. Roles with no reviewers are un-approvable.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "For each requestable role, the set of reviewer roles that can approve it. Roles with no reviewers are un-approvable.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT r2.value->>'name' AS target_role,\n       string_agg(DISTINCT r1.value->>'name', ', ' ORDER BY r1.value->>'name') AS reviewers\nFROM edges e\nJOIN nodes r1 ON r1.id=e.from_node\nJOIN nodes r2 ON r2.id=e.to_node\nWHERE e.kind='reviewer_of' AND r2.value->>'name' LIKE 'role-%'\nGROUP BY target_role\nORDER BY target_role\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
       "id": 14,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -514,25 +911,66 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
       "id": 104,
       "title": "Resources & Blast Radius",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Full inventory of every Teleport resource by type. Use labels to verify expected coverage or spot unlabelled resources.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Full inventory of every Teleport resource by type. Use labels to verify expected coverage or spot unlabelled resources.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT subkind AS kind, value->>'name' AS name, value->'labels' AS labels\nFROM nodes WHERE kind='resource' ORDER BY subkind, name\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 39 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 39
+      },
       "id": 15,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -544,19 +982,55 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Top 25 roles by the number of distinct resource groups they grant access to. High counts indicate large blast radius if the role's accounts are compromised.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Top 25 roles by the number of distinct resource groups they grant access to. High counts indicate large blast radius if the role's accounts are compromised.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT r.value->>'name' AS role, count(DISTINCT e2.to_node) AS resource_groups_granted\nFROM nodes r\nJOIN edges e1 ON e1.from_node=r.id AND e1.kind='access'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nWHERE r.kind='identity_group' AND r.subkind='role'\nGROUP BY role\nORDER BY resource_groups_granted DESC\nLIMIT 25\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 39 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 39
+      },
       "id": 16,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -568,19 +1042,55 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Roles granting access to the wildcard resource group {\"*\":\"*\"} — these bypass all label-based segmentation and have the highest effective blast radius.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Roles granting access to the wildcard resource group {\"*\":\"*\"} — these bypass all label-based segmentation and have the highest effective blast radius.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\nORDER BY role, resource_kind\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 39 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 39
+      },
       "id": 17,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -593,25 +1103,66 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 47 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      },
       "id": 105,
       "title": "Policy Hygiene",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Roles requiring MFA re-authentication or hardware trusted-device verification at the action level. Cross-reference with Wildcard-Access Roles to ensure the most powerful roles have adequate assurance requirements.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Roles requiring MFA re-authentication or hardware trusted-device verification at the action level. Cross-reference with Wildcard-Access Roles to ensure the most powerful roles have adequate assurance requirements.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT value->>'name' AS role,\n       value->'properties'->'teleport'->>'require_mfa_type' AS mfa,\n       value->'properties'->'teleport'->>'trusted_device'   AS trusted_device\nFROM nodes\nWHERE kind='action'\n  AND (value->'properties'->'teleport'->>'require_mfa_type' <> 'OFF'\n       OR value->'properties'->'teleport'->>'trusted_device' = 'required')\nORDER BY role\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
       "id": 18,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -623,23 +1174,59 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "Roles with no members (no direct user or bot assignments) and no references in any escalation chain. Safe to delete.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Roles with no users, no bot impersonations, and no JIT escalation path leading to them — candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
       "id": 19,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('member_of','impersonator_of'))\n  AND NOT EXISTS (SELECT 1 FROM edges e WHERE e.to_node=r.id AND e.kind IN ('requester_of','reviewer_of'))\nORDER BY role",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role",
           "refId": "A"
         }
       ],
@@ -648,25 +1235,66 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
       "id": 106,
       "title": "Security Alerts",
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
-      "description": "All security alerts from Access Graph, most recent first. The data column contains the full structured finding. Filter by severity or status to focus on critical open issues.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "All security alerts from Access Graph, most recent first. The data column contains the full structured finding. Filter by severity or status to focus on critical open issues.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT severity, status, kind, data->>'created_at' AS created_at, data\nFROM security_alerts\nORDER BY (data->>'created_at') DESC\nLIMIT 50\n```",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "auto", "displayMode": "auto", "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 57 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      },
       "id": 20,
-      "options": { "footer": { "fields": "", "reducer": ["sum"], "show": false }, "showHeader": true },
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -680,7 +1308,11 @@
   ],
   "refresh": "5m",
   "schemaVersion": 39,
-  "tags": ["teleport", "identity", "access-graph"],
+  "tags": [
+    "teleport",
+    "identity",
+    "access-graph"
+  ],
   "templating": {
     "list": [
       {
@@ -699,8 +1331,13 @@
       },
       {
         "allowCustomValue": false,
-        "current": { "selected": true },
-        "datasource": { "type": "postgres", "uid": "${DS_ACCESS_GRAPH}" },
+        "current": {
+          "selected": true
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_ACCESS_GRAPH}"
+        },
         "definition": "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY 1;",
         "description": "Tenant schema inside the access_graph database. There is typically one per Teleport cluster.",
         "hide": 0,
@@ -717,8 +1354,13 @@
       }
     ]
   },
-  "time": { "from": "now-1h", "to": "now" },
-  "timepicker": { "hidden": true },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
   "timezone": "browser",
   "title": "Teleport Identity Security",
   "uid": "teleport-identity-security",
