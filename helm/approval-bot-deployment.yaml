@@ -29,8 +29,14 @@ spec:
         - name: approval-bot
           image: ghcr.io/jturner-teleport/approval-bot:latest
           env:
+            # Connect directly to auth's in-cluster gRPC service instead of
+            # going out through the public proxy NLB. Skips two network hops
+            # (pod → NLB → proxy → auth becomes pod → auth) and the renamed
+            # var "TELEPORT_AUTH_ADDR" + the upstream var name "TELEPORT_PROXY_ADDR"
+            # are both consumed by bot/main.go's client.New which auto-detects
+            # whether the address is a proxy or auth endpoint.
             - name: TELEPORT_PROXY_ADDR
-              value: ${TELEPORT_DOMAIN}:443
+              value: teleport-auth.teleport.svc.cluster.local:3025
             - name: TELEPORT_IDENTITY_FILE
               value: /var/run/secrets/teleport/identity
           volumeMounts:
