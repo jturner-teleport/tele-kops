@@ -82,6 +82,15 @@ spec:
         - name: tbot
           image: public.ecr.aws/gravitational/teleport-ent-distroless:${TELEPORT_VERSION}
           command: ["tbot", "start", "--config=/etc/tbot/tbot.yaml"]
+          env:
+            # Required by tbot's kubernetes_secret destination so it knows which
+            # namespace to write the renewed identity secret into. Without this,
+            # tbot crashes at startup with "unable to detect namespace from
+            # POD_NAMESPACE environment variable".
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           volumeMounts:
             - name: tbot-config
               mountPath: /etc/tbot
