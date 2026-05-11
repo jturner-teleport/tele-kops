@@ -23,6 +23,8 @@ spec:
         app: approval-bot
     spec:
       serviceAccountName: approval-bot
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       containers:
         - name: approval-bot
           image: ghcr.io/jturner-teleport/approval-bot:latest
