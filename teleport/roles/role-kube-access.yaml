@@ -6,12 +6,17 @@ spec:
   allow:
     kubernetes_labels:
       '*': '*'
+    # v7 kubernetes_resources requires explicit verbs + api_group. Use kind:'*'
+    # to cover every namespaced resource (pods, deployments, services,
+    # configmaps, secrets, etc.) instead of enumerating each one.
     kubernetes_resources:
       - kind: namespace
         name: '{{external.team}}'
-      - kind: pod
-        namespace: '{{external.team}}'
+        verbs: ['*']
+      - kind: '*'
         name: '*'
+        namespace: '{{external.team}}'
+        verbs: ['*']
     kubernetes_groups:
       - '{{external.team}}'
   options:
