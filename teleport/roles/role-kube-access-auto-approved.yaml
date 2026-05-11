@@ -1,0 +1,11 @@
+# role-kube-access-auto-approved — marker role granted via the
+# devops-kube-access Access List. The approval-bot watches for users
+# holding this role and auto-approves their role-kube-access requests.
+# This role grants no privileges by itself.
+kind: role
+version: v7
+metadata:
+  name: role-kube-access-auto-approved
+spec:
+  options:
+    max_session_ttl: 8h0m0s

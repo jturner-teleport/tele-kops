@@ -58,6 +58,13 @@ jobs:
             tctl create -f "$f" --force
           done
 
+          # Access Lists
+          for f in teleport/access-lists/*.yaml; do
+            [ -f "$f" ] || continue
+            echo "Applying $f"
+            tctl create -f "$f" --force
+          done
+
           # OIDC connector template (requires envsubst)
           envsubst < teleport/connectors/google-oidc.yaml.tpl | tctl create -f - --force
           echo "All Teleport config applied."
