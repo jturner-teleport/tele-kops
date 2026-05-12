@@ -47,6 +47,12 @@ ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
 [[ -z "${ASG_NAME}" || "${ASG_NAME}" == "None" ]] \
   && fail "Could not find ASG for instance group ${IG_NAME} in cluster ${CLUSTER_NAME}"
 
+# Tag the ASG with paused intent BEFORE scaling. If the scale call fails, the
+# tag still reflects intent so `make up` can recover by re-running resume.
+log "Tagging ${ASG_NAME} teleport.dev/state=paused..."
+aws autoscaling create-or-update-tags --tags \
+  "ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=teleport.dev/state,Value=paused,PropagateAtLaunch=false"
+
 log "Scaling ${ASG_NAME} to 0..."
 aws autoscaling update-auto-scaling-group \
   --auto-scaling-group-name "${ASG_NAME}" \

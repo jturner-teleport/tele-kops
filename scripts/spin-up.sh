@@ -355,6 +355,40 @@ RUNNING_MASTER=$(aws ec2 describe-instances \
 
 if [[ -n "${RUNNING_MASTER}" && "${RUNNING_MASTER}" != "None" ]]; then
   log "Cluster already running (master: ${RUNNING_MASTER}) — skipping provisioning."
+
+  # ── Auto-resume if cluster was paused ────────────────────────────────────────
+  # Detect paused state via the teleport.dev/state tag set by pause.sh, falling
+  # back to ASG sizing (MaxSize/DesiredCapacity == 0) so this works on clusters
+  # paused before the tag existed. If paused, scale the worker ASG back up so
+  # downstream helm/kubectl steps have nodes to land on.
+  WORKER_ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
+    --filters "Name=tag:kops.k8s.io/instancegroup,Values=nodes-${AWS_AZ}" \
+              "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+    --query 'AutoScalingGroups[0].AutoScalingGroupName' \
+    --output text 2>/dev/null || true)
+  if [[ -n "${WORKER_ASG_NAME}" && "${WORKER_ASG_NAME}" != "None" ]]; then
+    read -r WORKER_ASG_MAX WORKER_ASG_DESIRED < <(aws autoscaling describe-auto-scaling-groups \
+      --auto-scaling-group-names "${WORKER_ASG_NAME}" \
+      --query 'AutoScalingGroups[0].[MaxSize,DesiredCapacity]' \
+      --output text)
+    WORKER_STATE_TAG=$(aws autoscaling describe-tags \
+      --filters "Name=auto-scaling-group,Values=${WORKER_ASG_NAME}" \
+                "Name=key,Values=teleport.dev/state" \
+      --query 'Tags[0].Value' --output text 2>/dev/null || true)
+
+    if [[ "${WORKER_STATE_TAG}" == "paused" \
+       || "${WORKER_ASG_MAX}" == "0" \
+       || "${WORKER_ASG_DESIRED}" == "0" ]]; then
+      log "Cluster is paused (tag=${WORKER_STATE_TAG:-<unset>}, max=${WORKER_ASG_MAX}, desired=${WORKER_ASG_DESIRED}) — auto-resuming..."
+      aws autoscaling update-auto-scaling-group \
+        --auto-scaling-group-name "${WORKER_ASG_NAME}" \
+        --min-size "${WORKER_MIN}" \
+        --max-size "${WORKER_MAX}"
+      aws autoscaling create-or-update-tags --tags \
+        "ResourceId=${WORKER_ASG_NAME},ResourceType=auto-scaling-group,Key=teleport.dev/state,Value=running,PropagateAtLaunch=false"
+      log "Workers scaling up — Teleport pods will reschedule once nodes are Ready."
+    fi
+  fi
 else
   # ── Clean up orphaned etcd EBS volumes from any previous failed run ──────────
   # kops cannot change the Encrypted field on existing volumes, causing
@@ -461,17 +495,33 @@ until kubectl get nodes &>/dev/null; do
   sleep 15
 done
 
-log "Waiting for nodes to be Ready (~10 min)..."
-# kubectl wait --all exits immediately with "no matching resources" if no nodes
-# have registered yet. Poll until at least one node appears first.
+log "Waiting for control-plane + ${WORKER_MIN} schedulable worker(s) to be Ready (~10 min)..."
+# On a paused-cluster auto-resume, the previously-running worker enters
+# Terminating:Wait (cordoned, status "Ready,SchedulingDisabled") while the
+# replacement boots. A simple node count or `kubectl wait --all` would pass
+# against that cordoned node and let helm steps start with no schedulable
+# capacity. Strict $2=="Ready" excludes "Ready,SchedulingDisabled".
 ATTEMPTS=0
-until kubectl get nodes --no-headers 2>/dev/null | grep -q .; do
+until NODES=$(kubectl get nodes --no-headers 2>/dev/null) \
+   && [[ $(awk '$2=="Ready" && $3=="control-plane"' <<<"${NODES}" | wc -l) -ge 1 ]] \
+   && [[ $(awk '$2=="Ready" && $3 ~ /worker/' <<<"${NODES}" | wc -l) -ge ${WORKER_MIN} ]]; do
   ATTEMPTS=$((ATTEMPTS + 1))
-  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for nodes to register (10 min)"
+  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for control-plane + ${WORKER_MIN} schedulable worker(s) (10 min)"
   sleep 15
 done
-kubectl wait --for=condition=Ready node --all --timeout=10m
 log "Cluster is healthy."
+
+# Mark worker ASG as running. Bootstraps the tag on fresh provisions, backfills
+# clusters that pre-date the tag, and is a no-op on auto-resumed clusters.
+WORKER_ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
+  --filters "Name=tag:kops.k8s.io/instancegroup,Values=nodes-${AWS_AZ}" \
+            "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+  --query 'AutoScalingGroups[0].AutoScalingGroupName' \
+  --output text 2>/dev/null || true)
+if [[ -n "${WORKER_ASG_NAME}" && "${WORKER_ASG_NAME}" != "None" ]]; then
+  aws autoscaling create-or-update-tags --tags \
+    "ResourceId=${WORKER_ASG_NAME},ResourceType=auto-scaling-group,Key=teleport.dev/state,Value=running,PropagateAtLaunch=false"
+fi
 
 # ── cert-manager ──────────────────────────────────────────────────────────────
 log "Installing cert-manager..."
