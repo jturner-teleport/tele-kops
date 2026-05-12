@@ -52,6 +52,11 @@ aws autoscaling update-auto-scaling-group \
   --min-size "${WORKER_MIN}" \
   --max-size "${WORKER_MAX}"
 
+# Tag AFTER scaling so paused intent persists if the scale call fails.
+log "Tagging ${ASG_NAME} teleport.dev/state=running..."
+aws autoscaling create-or-update-tags --tags \
+  "ResourceId=${ASG_NAME},ResourceType=auto-scaling-group,Key=teleport.dev/state,Value=running,PropagateAtLaunch=false"
+
 unset AWS_CONFIG_FILE
 log "Workers scaling up. Teleport pods will reschedule in ~2-3 minutes."
 log "Check status: kubectl get pods -n teleport"
