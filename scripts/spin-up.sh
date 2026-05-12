@@ -495,18 +495,20 @@ until kubectl get nodes &>/dev/null; do
   sleep 15
 done
 
-log "Waiting for nodes to be Ready (~10 min)..."
-# kubectl wait --all exits immediately with "no matching resources" if no nodes
-# have registered yet. Poll until master + WORKER_MIN workers have registered
-# so an auto-resume from paused state doesn't race the worker boot.
-EXPECTED_NODES=$((1 + WORKER_MIN))
+log "Waiting for control-plane + ${WORKER_MIN} schedulable worker(s) to be Ready (~10 min)..."
+# On a paused-cluster auto-resume, the previously-running worker enters
+# Terminating:Wait (cordoned, status "Ready,SchedulingDisabled") while the
+# replacement boots. A simple node count or `kubectl wait --all` would pass
+# against that cordoned node and let helm steps start with no schedulable
+# capacity. Strict $2=="Ready" excludes "Ready,SchedulingDisabled".
 ATTEMPTS=0
-until [[ $(kubectl get nodes --no-headers 2>/dev/null | wc -l) -ge ${EXPECTED_NODES} ]]; do
+until NODES=$(kubectl get nodes --no-headers 2>/dev/null) \
+   && [[ $(awk '$2=="Ready" && $3=="control-plane"' <<<"${NODES}" | wc -l) -ge 1 ]] \
+   && [[ $(awk '$2=="Ready" && $3 ~ /worker/' <<<"${NODES}" | wc -l) -ge ${WORKER_MIN} ]]; do
   ATTEMPTS=$((ATTEMPTS + 1))
-  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for ${EXPECTED_NODES} nodes to register (10 min)"
+  [[ $ATTEMPTS -ge 40 ]] && fail "Timed out waiting for control-plane + ${WORKER_MIN} schedulable worker(s) (10 min)"
   sleep 15
 done
-kubectl wait --for=condition=Ready node --all --timeout=10m
 log "Cluster is healthy."
 
 # Mark worker ASG as running. Bootstraps the tag on fresh provisions, backfills
