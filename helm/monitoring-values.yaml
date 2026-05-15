@@ -26,9 +26,11 @@ grafana:
   # Grafana is exposed via Teleport's app_service at https://grafana.teleport.jwturner.dev
   # (separate teleport-kube-agent deployment registers Grafana as an application).
   #
-  # auth.proxy: trust the X-WEBAUTH-* headers set by the teleport-kube-agent's
-  # app rewrite (helm/grafana-agent-values.yaml.tpl). Users authenticate once via
-  # Teleport SSO; Grafana auto-creates a user from the Teleport identity.
+  # auth.jwt: Grafana verifies a Teleport-signed JWT via the proxy's JWKS endpoint.
+  # The teleport-kube-agent app rewrite (helm/grafana-agent-values.yaml.tpl) injects
+  # `Authorization: Bearer {{internal.jwt}}` on every request. role_attribute_path
+  # maps Teleport roles → Grafana org roles at login time.
+  # Reference: https://goteleport.com/docs/enroll-resources/application-access/jwt/grafana/
 
   # Read-only Postgres datasource for the Identity Security dashboard.
   # access_graph user only has SELECT on the tenant schema (CNPG-managed role).
@@ -57,22 +59,22 @@ grafana:
     auth:
       disable_login_form: true            # hide local login (Teleport handles auth)
       disable_signout_menu: false
-    auth.proxy:
+    auth.jwt:
       enabled: true
-      header_name: X-WEBAUTH-USER
-      header_property: username
+      header_name: Authorization
+      # Teleport's proxy serves a public JWKS at /.well-known/jwks.json. Grafana
+      # uses it to verify the JWT signed by the app_service rewrite header.
+      jwk_set_url: https://teleport.jwturner.dev/.well-known/jwks.json
+      # sub = Teleport login name (e.g. SSO email or local 'admin')
+      username_claim: sub
       auto_sign_up: true
-      sync_ttl: 60
-      # The Role header lets us set/refresh the Grafana org role on each login
-      # (Editor by default in auto_sign_up; this overrides per-request).
-      headers: "Email:X-WEBAUTH-EMAIL Name:X-WEBAUTH-NAME Role:X-WEBAUTH-ROLE"
-      enable_login_token: false
+      # Map Teleport roles → Grafana org role on every login. The built-in
+      # 'access' role (granted to admins) becomes Grafana Admin; everyone else
+      # who can reach the app (gated by role-grafana-access at the Teleport
+      # layer) falls through to Viewer.
+      role_attribute_path: contains(roles[*], 'access') && 'Admin' || 'Viewer'
     auth.anonymous:
       enabled: false
-    users:
-      # All Teleport-authorized users (gated at the app-proxy layer by
-      # role-grafana-access) land as Admin in Grafana.
-      auto_assign_org_role: Admin
   sidecar:
     dashboards:
       enabled: true
