@@ -10,6 +10,16 @@ proxyAddr: "${TELEPORT_DOMAIN}:443"
 enterprise: true
 teleportClusterName: "${TELEPORT_DOMAIN}"
 
+# Resolve the proxy FQDN to the in-cluster service IP so the reverse tunnel
+# doesn't egress through the public NLB. Without this, the NLB drops idle
+# connections after ~60s, causing teleport_connected_resources to flap and
+# producing Unknown InventoryControlStream gRPC errors. The TLS cert SAN
+# still matches because we kept the FQDN — only the resolution path changes.
+hostAliases:
+  - ip: "${TELEPORT_PROXY_CLUSTER_IP}"
+    hostnames:
+      - "${TELEPORT_DOMAIN}"
+
 # Kubernetes-style join via the agent's ServiceAccount JWT.
 # Token is teleport/tokens/grafana-app-agent-token.yaml — applied by apply-teleport-config.sh
 # (and by the teleport-apply CI workflow on push to main).
