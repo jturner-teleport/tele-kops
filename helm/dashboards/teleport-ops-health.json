@@ -759,8 +759,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (cnpg_pg_stat_activity_count)",
-          "legendFormat": "{{pod}}",
+          "expr": "sum by (state) (cnpg_backends_total)",
+          "legendFormat": "{{state}}",
           "range": true,
           "refId": "A"
         }

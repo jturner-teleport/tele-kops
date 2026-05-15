@@ -398,8 +398,8 @@
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
           "editorMode": "code",
-          "expr": "sum by (connection_type) (teleport_authenticated_active_connections{namespace=~\"$namespace\",job=~\"$teleport_job\"})",
-          "legendFormat": "{{connection_type}}",
+          "expr": "sum by (ingress_service) (teleport_authenticated_active_connections{namespace=~\"$namespace\",job=~\"$teleport_job\"})",
+          "legendFormat": "{{ingress_service}}",
           "range": true,
           "refId": "A"
         }
@@ -517,7 +517,7 @@
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
           "editorMode": "code",
-          "expr": "sum(rate(grpc_server_handled_total{grpc_code!=\"OK\",namespace=~\"$namespace\",job=~\"$teleport_job\"}[5m])) / sum(rate(grpc_server_handled_total{namespace=~\"$namespace\",job=~\"$teleport_job\"}[5m]))",
+          "expr": "sum(rate(grpc_server_handled_total{grpc_code!~\"OK|NotFound|Canceled\",namespace=~\"$namespace\",job=~\"$teleport_job\"}[5m])) / sum(rate(grpc_server_handled_total{namespace=~\"$namespace\",job=~\"$teleport_job\"}[5m]))",
           "legendFormat": "Error Rate",
           "range": true,
           "refId": "A"
