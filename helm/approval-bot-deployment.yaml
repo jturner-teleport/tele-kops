@@ -12,6 +12,12 @@ metadata:
   namespace: teleport
   labels:
     app: approval-bot
+  annotations:
+    # Stakater Reloader watches this Secret and triggers a rolling restart
+    # when its data changes. tbot rotates approval-bot-identity periodically;
+    # without this annotation the bot keeps using the cert it loaded at
+    # startup and starts failing SSH handshake to auth once it expires.
+    secret.reloader.stakater.com/reload: "approval-bot-identity"
 spec:
   replicas: 1
   selector:

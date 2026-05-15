@@ -551,6 +551,20 @@ helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
   --wait \
   --timeout 5m
 
+# ── Stakater Reloader ─────────────────────────────────────────────────────────
+# Watches Secrets/ConfigMaps and rolls dependent Deployments when they change.
+# Used by approval-bot so it picks up rotated certs from approval-bot-identity
+# without manual `kubectl rollout restart`. Opt-in per-Deployment via the
+# `secret.reloader.stakater.com/reload` annotation.
+log "Installing Stakater Reloader..."
+helm repo add stakater https://stakater.github.io/stakater-charts --force-update &>/dev/null
+helm repo update &>/dev/null
+
+helm upgrade --install reloader stakater/reloader \
+  --namespace kube-system \
+  --wait \
+  --timeout 5m
+
 # ── Create teleport namespace (needed for CNPG cluster CR) ────────────────────
 kubectl create namespace teleport --dry-run=client -o yaml | kubectl apply -f -
 
