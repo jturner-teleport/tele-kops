@@ -39,22 +39,13 @@ apps:
       headers:
         - "Host: grafana.${TELEPORT_DOMAIN}"
         - "Origin: https://grafana.${TELEPORT_DOMAIN}"
-        # Grafana's auth.proxy trusts these headers (configured in
-        # helm/monitoring-values.yaml under grafana.grafana.ini.auth.proxy).
-        # The Teleport user is auto-signed-up in Grafana on first request.
-        # X-WEBAUTH-ROLE refreshes the Grafana org role on every login —
-        # all users with role-grafana-access get Admin (gated at Teleport).
-        #
-        # X-WEBAUTH-USER uses {{external.email}} so the Grafana login
-        # matches the user's email. SSO users get their Google email; the
-        # local admin user has `email: admin@b1tsized.tech` set as a trait
-        # (so `external.email` resolves for both).
-        # The {{teleport.user}} placeholder is NOT supported in app rewrite
-        # headers in v18 (only in role/login-rule templates).
-        - "X-WEBAUTH-USER: {{external.email}}"
-        - "X-WEBAUTH-EMAIL: {{external.email}}"
-        - "X-WEBAUTH-NAME: {{external.name}}"
-        - "X-WEBAUTH-ROLE: Admin"
+        # Grafana's auth.jwt verifies this Teleport-signed JWT against the
+        # proxy's JWKS endpoint (configured in helm/monitoring-values.yaml
+        # under grafana.grafana.ini.auth.jwt). username_claim=sub maps to
+        # the Teleport login name; role_attribute_path resolves the Grafana
+        # org role from the JWT's roles claim on every request.
+        # Reference: https://goteleport.com/docs/enroll-resources/application-access/jwt/grafana/
+        - "Authorization: Bearer {{internal.jwt}}"
     labels:
       app: grafana
       env: dev
