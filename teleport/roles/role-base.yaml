@@ -4,36 +4,29 @@ metadata:
   name: role-base
 spec:
   allow:
-    # No standing USE privileges, but full visibility into every registered
-    # Teleport resource (nodes, kube clusters, apps, databases, desktops).
-    # Users can browse the resource list in the Web UI to figure out what
-    # they want to request access to. They still can't connect/exec/etc.
-    # because we don't set logins, kubernetes_groups, db_users, app_labels-
-    # backed app access etc.
-    app_labels:
-      '*': '*'
-    node_labels:
-      '*': '*'
-    kubernetes_labels:
-      '*': '*'
-    db_labels:
-      '*': '*'
-    windows_desktop_labels:
-      '*': '*'
-    # Lets the Web UI list namespaces + pods inside any kube cluster so users
-    # can see what's available to request. Verbs are list/get only — no
-    # exec, no logs, no portforward. Combined with no kubernetes_groups, the
-    # K8s API will still 403 most reads.
-    kubernetes_resources:
-      - kind: '*'
-        name: '*'
-        namespace: '*'
-        verbs: ['list', 'get']
+    # No standing visibility on any resource. Discovery is delegated to
+    # search_as_roles: the user temporarily borrows the target role's labels
+    # at search time, picks a specific resource, and submits a Resource
+    # Access Request. Approval grants access to that resource only — not the
+    # whole role — which is what the Teleport docs recommend over wildcard
+    # *_labels on the base role.
+    # Reference: https://goteleport.com/docs/identity-governance/access-requests/resource-requests/
     request:
+      # Role-request flow: user can request to elevate to one of these roles
+      # in full (used by the auto-approval bot for access-list-gated roles).
       roles:
         - role-kube-access
         - role-ssh-access
         - role-ssh-root-access
+      # Resource-request flow: user can browse resources visible to these
+      # roles and request access to specific ones. role-grafana-access is
+      # included here (but not in request.roles) so non-admins can discover
+      # and request Grafana per-app.
+      search_as_roles:
+        - role-kube-access
+        - role-ssh-access
+        - role-ssh-root-access
+        - role-grafana-access
       thresholds:
         - approve: 1
           deny: 1
