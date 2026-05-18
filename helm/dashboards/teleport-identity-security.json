@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Access Graph (Identity Security) view — users, roles, resources, and security alerts backed by live SQL queries against the CNPG Postgres database.",
+  "description": "Access Graph (Identity Security) view \u2014 users, roles, resources, and security alerts backed by live SQL queries against the CNPG Postgres database.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -387,7 +387,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Users whose weakest MFA device is UNSET or empty — no MFA enrolled.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='identity' AND subkind='user' AND value->'properties'->>'weakest_mfa_device_kind' IN ('UNSET','')\n```",
+      "description": "Users whose weakest MFA device is UNSET or empty \u2014 no MFA enrolled.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='identity' AND subkind='user' AND value->'properties'->>'weakest_mfa_device_kind' IN ('UNSET','')\n```",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -456,7 +456,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Count of roles with no users, no bot impersonations, and no JIT escalation path leading to them — candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub\n```",
+      "description": "Count of roles with no users, no bot impersonations, and no JIT escalation path leading to them \u2014 candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub\n```",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -654,7 +654,7 @@
           "refId": "A"
         }
       ],
-      "title": "Users — Standing Privileges & MFA",
+      "title": "Users \u2014 Standing Privileges & MFA",
       "type": "table"
     },
     {
@@ -662,7 +662,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Every user's direct SSH logins through their standing role memberships — who can SSH where, and as which UNIX user, without needing an access request.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT\n  u.value->>'name' AS user,\n  r.value->>'name' AS role,\n  a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values' AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nWHERE m.kind='member_of'\n```",
+      "description": "Every user's direct SSH logins through their standing role memberships \u2014 who can SSH where, and as which UNIX user, without needing an access request.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT\n  u.value->>'name' AS user,\n  r.value->>'name' AS role,\n  a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values' AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nWHERE m.kind='member_of'\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1046,7 +1046,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Roles granting access to the wildcard resource group {\"*\":\"*\"} — these bypass all label-based segmentation and have the highest effective blast radius.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\nORDER BY role, resource_kind\n```",
+      "description": "Roles granting access to the wildcard resource group {\"*\":\"*\"} \u2014 these bypass all label-based segmentation and have the highest effective blast radius.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\nORDER BY role, resource_kind\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1178,7 +1178,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "Roles with no users, no bot impersonations, and no JIT escalation path leading to them — candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role\n```",
+      "description": "Roles with no users, no bot impersonations, and no JIT escalation path leading to them \u2014 candidates for cleanup. Aggregates by role NAME to handle Access Graph occasional duplicate node records for the same role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1250,7 +1250,7 @@
         "type": "postgres",
         "uid": "${DS_ACCESS_GRAPH}"
       },
-      "description": "All security alerts from Access Graph, most recent first. The data column contains the full structured finding. Filter by severity or status to focus on critical open issues.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT severity, status, kind, data->>'created_at' AS created_at, data\nFROM security_alerts\nORDER BY (data->>'created_at') DESC\nLIMIT 50\n```",
+      "description": "All security alerts from Access Graph, sorted by severity then most recent. Structured columns extracted from the alert payload so the table is scannable without expanding the JSON.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT\n  data->>'severity' AS severity,\n  data->>'status'   AS status,\n  data->>'kind'     AS kind,\n  data->'affected_entity'->>'type' AS affected_type,\n  data->'affected_entity'->>'name' AS affected_name,\n  data->>'title'    AS title,\n  (data->>'created_at')::timestamptz AS created_at\nFROM security_alerts\nORDER BY\n  CASE data->>'severity' WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END,\n  (data->>'created_at')::timestamptz DESC\nLIMIT 50\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1298,11 +1298,131 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT severity, status, kind, data->>'created_at' AS created_at, data\nFROM security_alerts\nORDER BY (data->>'created_at') DESC\nLIMIT 50",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  data->>'severity' AS severity,\n  data->>'status'   AS status,\n  data->>'kind'     AS kind,\n  data->'affected_entity'->>'type' AS affected_type,\n  data->'affected_entity'->>'name' AS affected_name,\n  data->>'title'    AS title,\n  (data->>'created_at')::timestamptz AS created_at\nFROM security_alerts\nORDER BY\n  CASE data->>'severity' WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END,\n  (data->>'created_at')::timestamptz DESC\nLIMIT 50",
           "refId": "A"
         }
       ],
       "title": "Active Security Alerts",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Configured Crown Jewels in Access Graph plus the principals that currently have standing access to the matched resource. If a row shows the placeholder \"no principals \u2014 matcher targets a deleted resource OR no roles grant access\", either fix the matcher to point at a current resource or confirm no role actually grants reach.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\n-- Each crown_jewel node carries a matcher (an Access Graph SQL query that\n-- selects the resource(s) it tracks) plus the set of principals that can\n-- currently reach the matched resource via standing access.\nSELECT\n  cj.value->>'name' AS crown_jewel_uuid,\n  cj.value->'matchers'->>'query' AS matcher_query,\n  COALESCE(\n    string_agg(DISTINCT u.value->>'name', ', ' ORDER BY u.value->>'name'),\n    '<no principals \u2014 matcher targets a deleted resource OR no roles grant access>'\n  ) AS principals_with_standing_access,\n  COALESCE(\n    string_agg(DISTINCT r.value->>'name', ', ' ORDER BY r.value->>'name'),\n    ''\n  ) AS via_roles\nFROM nodes cj\nLEFT JOIN nodes target\n  ON target.value->>'name' = (regexp_match(cj.value->'matchers'->>'query','name = ''([^'']+)'''))[1]\n  OR target.value->'properties'->>'alias' = (regexp_match(cj.value->'matchers'->>'query','alias'' = ''([^'']+)'''))[1]\nLEFT JOIN edges e_t ON e_t.to_node = target.id AND e_t.kind = 'access'\nLEFT JOIN nodes a ON a.id = e_t.from_node AND a.kind = 'action'\nLEFT JOIN edges e_a ON e_a.to_node = a.id AND e_a.kind = 'access'\nLEFT JOIN nodes r ON r.id = e_a.from_node AND r.kind = 'identity_group'\nLEFT JOIN edges e_m ON e_m.to_node = r.id AND e_m.kind = 'member_of'\nLEFT JOIN nodes u ON u.id = e_m.from_node AND u.kind = 'identity'\nWHERE cj.kind = 'crown_jewel'\nGROUP BY cj.id, cj.value\nORDER BY cj.value->>'name'\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 67
+      },
+      "id": 107,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\n-- Each crown_jewel node carries a matcher (an Access Graph SQL query that\n-- selects the resource(s) it tracks) plus the set of principals that can\n-- currently reach the matched resource via standing access.\nSELECT\n  cj.value->>'name' AS crown_jewel_uuid,\n  cj.value->'matchers'->>'query' AS matcher_query,\n  COALESCE(\n    string_agg(DISTINCT u.value->>'name', ', ' ORDER BY u.value->>'name'),\n    '<no principals \u2014 matcher targets a deleted resource OR no roles grant access>'\n  ) AS principals_with_standing_access,\n  COALESCE(\n    string_agg(DISTINCT r.value->>'name', ', ' ORDER BY r.value->>'name'),\n    ''\n  ) AS via_roles\nFROM nodes cj\nLEFT JOIN nodes target\n  ON target.value->>'name' = (regexp_match(cj.value->'matchers'->>'query','name = ''([^'']+)'''))[1]\n  OR target.value->'properties'->>'alias' = (regexp_match(cj.value->'matchers'->>'query','alias'' = ''([^'']+)'''))[1]\nLEFT JOIN edges e_t ON e_t.to_node = target.id AND e_t.kind = 'access'\nLEFT JOIN nodes a ON a.id = e_t.from_node AND a.kind = 'action'\nLEFT JOIN edges e_a ON e_a.to_node = a.id AND e_a.kind = 'access'\nLEFT JOIN nodes r ON r.id = e_a.from_node AND r.kind = 'identity_group'\nLEFT JOIN edges e_m ON e_m.to_node = r.id AND e_m.kind = 'member_of'\nLEFT JOIN nodes u ON u.id = e_m.from_node AND u.kind = 'identity'\nWHERE cj.kind = 'crown_jewel'\nGROUP BY cj.id, cj.value\nORDER BY cj.value->>'name'",
+          "refId": "A"
+        }
+      ],
+      "title": "Crown Jewels Coverage",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Last 50 structural changes to the access graph. Each row is one TAG analyzer emission with the author (or '<system>' for graph-discovery events), the entity affected, and a count of edge/node deltas. Pivot here when investigating \"what changed recently\" \u2014 especially around role-modification security alerts.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\n-- Recent structural changes in the access graph (role mods, membership\n-- changes, permission grants/revokes). Surface a daily activity log for\n-- the analyst \u2014 pivot here when investigating \"what changed and when.\"\nSELECT\n  created_at,\n  COALESCE(NULLIF(author,''), '<system>') AS author,\n  affected_kind,\n  affected_name,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.edges.*'), '[]'::jsonb)) AS edges_changed,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.nodes.*'), '[]'::jsonb)) AS nodes_changed\nFROM access_path_changes\nORDER BY created_at DESC\nLIMIT 50\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 75
+      },
+      "id": 108,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\n-- Recent structural changes in the access graph (role mods, membership\n-- changes, permission grants/revokes). Surface a daily activity log for\n-- the analyst \u2014 pivot here when investigating \"what changed and when.\"\nSELECT\n  created_at,\n  COALESCE(NULLIF(author,''), '<system>') AS author,\n  affected_kind,\n  affected_name,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.edges.*'), '[]'::jsonb)) AS edges_changed,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.nodes.*'), '[]'::jsonb)) AS nodes_changed\nFROM access_path_changes\nORDER BY created_at DESC\nLIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent Access Path Changes",
       "type": "table"
     }
   ],
