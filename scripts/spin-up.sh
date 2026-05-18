@@ -744,6 +744,18 @@ helm upgrade --install teleport teleport/teleport-cluster \
 
 unset CNPG_PASSWORD
 
+# ── Discover the proxy service's in-cluster IP ────────────────────────────────
+# Pinned to ${TELEPORT_DOMAIN} via hostAliases in each in-cluster agent's pod
+# spec, so reverse tunnels stay inside the cluster instead of egressing through
+# the public NLB. The NLB drops idle connections, which used to manifest as
+# ~60s flapping in teleport_connected_resources and Unknown InventoryControlStream
+# gRPC errors. TLS verification still works because the FQDN matches the
+# Let's Encrypt cert SAN — we just rewrote the resolution path.
+TELEPORT_PROXY_CLUSTER_IP=$(kubectl -n teleport get svc teleport -o jsonpath='{.spec.clusterIP}')
+[[ -n "${TELEPORT_PROXY_CLUSTER_IP}" ]] || fail "Could not resolve teleport proxy service ClusterIP"
+export TELEPORT_PROXY_CLUSTER_IP
+log "Proxy service ClusterIP: ${TELEPORT_PROXY_CLUSTER_IP}"
+
 # Defensive ClusterRoleBinding for the proxy pod's ServiceAccount.
 # In standalone mode the auth pod runs kubernetes_service (not proxy), so the
 # chart-managed binding is sufficient — this is kept for forward-compat.

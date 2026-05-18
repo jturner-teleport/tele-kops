@@ -65,6 +65,15 @@ spec:
       serviceAccountName: ssh-node
       imagePullSecrets:
         - name: ghcr-pull-secret
+      # Pin ${TELEPORT_DOMAIN} to the in-cluster proxy ClusterIP so the reverse
+      # tunnel doesn't egress through the public NLB. The NLB drops idle
+      # connections after ~60s, producing teleport_connected_resources flap and
+      # Unknown InventoryControlStream gRPC errors. TLS verification still
+      # works because the cert SAN matches the FQDN.
+      hostAliases:
+        - ip: "${TELEPORT_PROXY_CLUSTER_IP}"
+          hostnames:
+            - "${TELEPORT_DOMAIN}"
       containers:
         - name: teleport
           image: ghcr.io/jturner-teleport/ssh-node:latest

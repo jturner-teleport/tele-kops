@@ -12,6 +12,13 @@ proxyAddr: "${TELEPORT_DOMAIN}:443"
 enterprise: true
 teleportClusterName: "${TELEPORT_DOMAIN}"
 
+# See grafana-agent-values.yaml.tpl for the rationale — pins ${TELEPORT_DOMAIN}
+# to the in-cluster proxy ClusterIP to keep the reverse tunnel off the NLB.
+hostAliases:
+  - ip: "${TELEPORT_PROXY_CLUSTER_IP}"
+    hostnames:
+      - "${TELEPORT_DOMAIN}"
+
 joinParams:
   method: "kubernetes"
   tokenName: "prometheus-app-agent-token"
