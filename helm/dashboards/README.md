@@ -176,7 +176,7 @@ the `kiwigrid/k8s-sidecar` dashboard sidecar enabled. The sidecar watches
 the cluster for `ConfigMap`s that carry a specific label and imports their
 contents as Grafana dashboards on the fly.
 
-Create one ConfigMap per dashboard (or a single ConfigMap with all three
+Create one ConfigMap per dashboard (or a single ConfigMap with all five
 JSON files as separate keys):
 
 ```bash
@@ -184,10 +184,18 @@ kubectl -n monitoring create configmap teleport-dashboards \
   --from-file=teleport-ops-health.json=helm/dashboards/teleport-ops-health.json \
   --from-file=teleport-identity.json=helm/dashboards/teleport-identity.json \
   --from-file=teleport-overview.json=helm/dashboards/teleport-overview.json \
+  --from-file=teleport-identity-security.json=helm/dashboards/teleport-identity-security.json \
+  --from-file=teleport-backend-cnpg.json=helm/dashboards/teleport-backend-cnpg.json \
   --dry-run=client -o yaml | \
   kubectl label -f - --local -o yaml grafana_dashboard=1 | \
   kubectl apply -f -
 ```
+
+Note: `teleport-identity-security.json` is rendered from
+`teleport-identity-security.json.tpl` — `scripts/spin-up.sh` does this
+automatically, or by hand:
+`envsubst '${TELEPORT_URL} ${TELEPORT_CLUSTER}' < helm/dashboards/teleport-identity-security.json.tpl > helm/dashboards/teleport-identity-security.json`.
+See the "Portability" section above for what those constants control.
 
 The label key that kube-prometheus-stack watches for is `grafana_dashboard`
 with value `1` (configurable via `grafana.sidecar.dashboards.label` and
@@ -234,17 +242,30 @@ Open the PR with a body along these lines:
 Adds three polished, self-explanatory Grafana dashboards under
 `grafana/teleport/` (or wherever fits the repo layout):
 
+- **Teleport — Overview (TV)** (`rev-tech-teleport-overview`)
+  Single-screen status board with big-number tiles for cluster status,
+  resources, sessions, today's logins/failures, audit errors, CPU/memory.
 - **Teleport — Ops Health** (`rev-tech-teleport-ops-health`)
-  SRE-focused: pod health, backend latency P50/P95/P99, CNPG Postgres health
-  (replication lag, connection count, DB sizes), audit pipeline errors,
-  per-pod CPU/memory.
+  SRE-focused: pod health, backend latency P50/P95/P99, audit pipeline
+  errors, per-pod CPU/memory. Backend-agnostic — no CNPG/Postgres queries.
 - **Teleport — Identity & Access** (`rev-tech-teleport-identity`)
   Security + SE demo: login success/failure rate, 24h success ratio,
   certificate issuance rate and latency, active sessions, gRPC RPC mix and
   error rate, connected-resource inventory by type.
-- **Teleport — Overview (TV)** (`rev-tech-teleport-overview`)
-  Single-screen status board with big-number tiles for cluster status,
-  resources, sessions, today's logins/failures, audit errors, CPU/memory.
+
+The repo also ships two additional dashboards that are **deployment-specific
+and not part of this submission**:
+
+- `teleport-identity-security.json` — Access Graph + audit-event analytics.
+  Ships as a `.json.tpl` because all deep-links into the Teleport Web UI
+  are baked in via `envsubst` on `${TELEPORT_URL}` / `${TELEPORT_CLUSTER}`
+  at render time. Also requires a second Postgres datasource pointed at
+  the Teleport backend DB for the Session Activity panels. Could be
+  upstreamed later as a separate, more carefully templatised submission.
+- `teleport-backend-cnpg.json` — CloudNativePG-only (`cnpg_pg_replication_lag`,
+  `cnpg_backends_total`, `cnpg_pg_database_size_bytes`). Not appropriate
+  for a generic rev-tech dashboard set, since most Teleport deployments
+  use a different backend (DynamoDB, RDS, Firestore, etc).
 
 ### Portability
 
@@ -261,9 +282,11 @@ proxy jobs (`teleport`, `teleport-auth`, etc).
 ### Metrics used
 
 All queries use only metrics that exist in OSS / Enterprise Teleport v15+
-and standard kube-prometheus-stack scrapes. CNPG panels in the Ops Health
-dashboard require `spec.monitoring.enablePodMonitor: true` on the cluster
-CR (no-op for non-CNPG users — panels just show "No data").
+and standard kube-prometheus-stack scrapes. No backend-specific metrics —
+the Ops Health backend panels use the Teleport-emitted
+`backend_{read,write}_seconds_bucket` / `backend_{read,write}_requests_total`
+series, which exist regardless of which backend (Postgres, DynamoDB, etcd,
+Firestore, SQLite) is in use.
 
 Note: `teleport_audit_emit_events` is the correct name on v18 (no `_total`
 suffix). Don't rename it on import.
