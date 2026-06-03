@@ -65,6 +65,49 @@ single-stat / gauge tiles only, all background-coloured by threshold:
 - Average CPU (gauge, orange/red at 0.5 / 0.9 cores) and average memory
   across teleport pods.
 
+### `teleport-identity-security.json` — Identity Security
+
+Audience: Security analysts. Pivots off the Teleport Access Graph plus the
+Teleport audit-event stream to answer "who has what, what's risky, and what
+just happened." Rows include Summary, Risk Indicators, Security Alerts,
+Recent Access Path Changes, **Session Activity** (new), User & Identity
+Details, Access Request & Reviewer Topology, Resources & Blast Radius, and
+Policy Hygiene.
+
+The Session Activity row surfaces Teleport's AI-generated
+`session.summarized` audit events (risk_level + short_description per
+session) as four analyst-targeted panels:
+
+- **Risk Level Breakdown** — 4 stats (Critical / High / Medium / Low) with
+  background colors red / orange / yellow / green.
+- **High & Critical Risk Sessions** — table sorted CRITICAL > HIGH then by
+  time DESC. Risk-level cells are color-mapped; username, hostname, and
+  short_description columns deep-link into the Teleport Web UI (filter,
+  resources page, session recording player respectively).
+- **Recent Session Summaries** — same shape, no risk filter. Filter-aware
+  on the existing `${user}` dropdown.
+- **Session Activity Trend** — 30-day stacked bar chart by risk_level,
+  mirroring the Alert Trend panel one section up.
+
+**Second Postgres datasource required.** The Session Activity panels read
+from `public.events` on the Teleport backend DB, which is a *different*
+database from the Access Graph one the rest of the dashboard uses. The
+dashboard ships with a second template-variable datasource named
+`Teleport Backend`; `helm/monitoring-values.yaml` provisions it as an
+`additionalDataSources` entry, and `scripts/spin-up.sh` mirrors the
+CNPG-managed `teleport-postgres-app` secret from `teleport/` into
+`monitoring/` so the Grafana pod can read the password via `envValueFrom`.
+
+The datasource is portable across any **Postgres-backed** Teleport
+deployment (CNPG, AWS RDS, self-hosted Postgres) — recipients just need to
+point the datasource URL/credentials at their own Postgres. The row is
+**not usable** for Teleport clusters running on DynamoDB, etcd, Firestore,
+or SQLite backends, since `session.summarized` events land in whatever
+audit-event storage the cluster uses and this dashboard only queries
+Postgres. Those users should hide the row (collapse it) or drop the
+datasource — the rest of the dashboard continues to work on the Access
+Graph datasource alone.
+
 ### `teleport-backend-cnpg.json` — Backend (CNPG Postgres)
 
 Audience: SREs running Teleport on the [CloudNativePG](https://cloudnative-pg.io/)

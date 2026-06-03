@@ -39,6 +39,10 @@ grafana:
       secretKeyRef:
         name: access-graph-pg-creds
         key: password
+    TELEPORT_BACKEND_PG_PASSWORD:
+      secretKeyRef:
+        name: teleport-backend-grafana-creds
+        key: password
   additionalDataSources:
     - name: Access Graph
       type: postgres
@@ -51,6 +55,22 @@ grafana:
         postgresVersion: 1700
       secureJsonData:
         password: $AG_PG_PASSWORD
+    - name: Teleport Backend
+      type: postgres
+      url: teleport-postgres-rw.teleport.svc.cluster.local:5432
+      user: teleport
+      access: proxy
+      jsonData:
+        database: teleport
+        sslmode: require
+        postgresVersion: 1700
+      secureJsonData:
+        password: $TELEPORT_BACKEND_PG_PASSWORD
+      # TODO(security): currently reuses the CNPG-generated `teleport`
+      # superuser. Long-term, create a `grafana_ro` role on the teleport DB
+      # with `SELECT` on `public.events` only, store its password in a
+      # dedicated secret (bootstrapped via a Job or CNPG initdb), and point
+      # this entry at that role. Pragmatic for dev cluster; not for prod.
 
   grafana.ini:
     server:

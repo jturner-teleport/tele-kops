@@ -626,7 +626,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 86
       },
       "id": 102,
       "title": "User & Identity Details",
@@ -686,7 +686,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 56
+        "y": 87
       },
       "id": 10,
       "options": {
@@ -793,7 +793,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 56
+        "y": 87
       },
       "id": 11,
       "options": {
@@ -900,7 +900,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 64
+        "y": 95
       },
       "id": 12,
       "options": {
@@ -936,7 +936,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 78
+        "y": 109
       },
       "id": 103,
       "title": "Access Request & Reviewer Topology",
@@ -1019,7 +1019,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 79
+        "y": 110
       },
       "id": 13,
       "options": {
@@ -1103,7 +1103,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 79
+        "y": 110
       },
       "id": 14,
       "options": {
@@ -1139,7 +1139,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 87
+        "y": 118
       },
       "id": 104,
       "title": "Resources & Blast Radius",
@@ -1206,7 +1206,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 88
+        "y": 119
       },
       "id": 15,
       "options": {
@@ -1290,7 +1290,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 88
+        "y": 119
       },
       "id": 16,
       "options": {
@@ -1374,7 +1374,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 88
+        "y": 119
       },
       "id": 17,
       "options": {
@@ -1410,7 +1410,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 127
       },
       "id": 105,
       "title": "Policy Hygiene",
@@ -1470,7 +1470,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 97
+        "y": 128
       },
       "id": 18,
       "options": {
@@ -1554,7 +1554,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 97
+        "y": 128
       },
       "id": 19,
       "options": {
@@ -2366,7 +2366,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 70
+        "y": 101
       },
       "id": 205,
       "options": {
@@ -2395,6 +2395,778 @@
       ],
       "title": "Top Risk Users (composite score)",
       "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "id": 109,
+      "panels": [],
+      "title": "Session Activity",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Count of session.summarized events at risk_level CRITICAL in the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 56
+      },
+      "id": 220,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::int\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' = 'CRITICAL'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')",
+          "refId": "A"
+        }
+      ],
+      "title": "Critical",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Count of session.summarized events at risk_level HIGH in the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 56
+      },
+      "id": 221,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::int\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' = 'HIGH'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')",
+          "refId": "A"
+        }
+      ],
+      "title": "High",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Count of session.summarized events at risk_level MEDIUM in the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "yellow"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 56
+      },
+      "id": 222,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::int\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' = 'MEDIUM'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')",
+          "refId": "A"
+        }
+      ],
+      "title": "Medium",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Count of session.summarized events at risk_level LOW in the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 56
+      },
+      "id": 223,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::int\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' = 'LOW'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')",
+          "refId": "A"
+        }
+      ],
+      "title": "Low",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "High- and critical-risk session summaries in the selected time range, sorted CRITICAL > HIGH then by time DESC. The risk_level cell is color-coded; click a row's short_description to jump to the session recording player, the username to filter the dashboard / open the user in Teleport, or the server_hostname to open the resource page.\n\n**TODO:** the session recording link below uses the URL pattern `/web/cluster/<cluster>/session/<sid>`, which is unverified. Replace with the actual Teleport Web UI pattern once confirmed against a live cluster.\n\n**SQL:**\n```sql\nSELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' IN ('HIGH','CRITICAL')\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sid"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "username"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this user",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-user=${__value.raw}&var-role=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open user in Teleport \u2197",
+                    "url": "${teleport_url}/web/users?user=${__value.text:percentencode}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "server_hostname"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open resource in Teleport \u2197",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/resources?search=${__value.text:percentencode}&sort=name%3Aasc&pinnedOnly=false&kinds=node",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "short_description"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Play session recording \u2197 (URL pattern unverified \u2014 see panel description)",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/session/${__data.fields[\"sid\"]:percentencode}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "risk_level"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "CRITICAL": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "CRITICAL"
+                      },
+                      "HIGH": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "HIGH"
+                      },
+                      "MEDIUM": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "MEDIUM"
+                      },
+                      "LOW": {
+                        "color": "green",
+                        "index": 3,
+                        "text": "LOW"
+                      },
+                      "UNSPECIFIED": {
+                        "color": "gray",
+                        "index": 4,
+                        "text": "UNSPECIFIED"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      },
+      "id": 224,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' IN ('HIGH','CRITICAL')\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "High & Critical Risk Sessions",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "All session summaries in the selected time range, sorted by risk_level (CRITICAL first) then by time DESC. Same column layout and links as the High & Critical table above; this view drops the risk filter so analysts can scan everything that happened.\n\n**TODO:** the session recording link below uses the URL pattern `/web/cluster/<cluster>/session/<sid>`, which is unverified. Replace with the actual Teleport Web UI pattern once confirmed against a live cluster.\n\n**SQL:**\n```sql\nSELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sid"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "username"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this user",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-user=${__value.raw}&var-role=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open user in Teleport \u2197",
+                    "url": "${teleport_url}/web/users?user=${__value.text:percentencode}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "server_hostname"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open resource in Teleport \u2197",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/resources?search=${__value.text:percentencode}&sort=name%3Aasc&pinnedOnly=false&kinds=node",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "short_description"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Play session recording \u2197 (URL pattern unverified \u2014 see panel description)",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/session/${__data.fields[\"sid\"]:percentencode}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "risk_level"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "CRITICAL": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "CRITICAL"
+                      },
+                      "HIGH": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "HIGH"
+                      },
+                      "MEDIUM": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "MEDIUM"
+                      },
+                      "LOW": {
+                        "color": "green",
+                        "index": 3,
+                        "text": "LOW"
+                      },
+                      "UNSPECIFIED": {
+                        "color": "gray",
+                        "index": 4,
+                        "text": "UNSPECIFIED"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
+      "id": 225,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent Session Summaries",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Daily count of session.summarized events for the last 30 days, stacked by risk_level. Visualizes the trend the tables above sample as a snapshot.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CRITICAL"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HIGH"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MEDIUM"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LOW"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UNSPECIFIED"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      },
+      "id": 226,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  date_trunc('day', event_time) AS time,\n  event_data->>'risk_level' AS metric,\n  count(*)::int AS value\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_time > NOW() - INTERVAL '30 days'\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nGROUP BY 1, 2\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Session Activity Trend (last 30 days)",
+      "type": "timeseries"
     }
   ],
   "refresh": "5m",
@@ -2412,6 +3184,20 @@
         "includeAll": false,
         "multi": false,
         "name": "DS_ACCESS_GRAPH",
+        "options": [],
+        "query": "postgres",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allowCustomValue": false,
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "DS_TELEPORT_BACKEND",
         "options": [],
         "query": "postgres",
         "queryValue": "",

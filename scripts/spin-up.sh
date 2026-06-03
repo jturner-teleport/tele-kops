@@ -712,6 +712,32 @@ CNPG_PASSWORD=$(kubectl -n teleport get secret teleport-postgres-app \
 [[ -n "${CNPG_PASSWORD}" ]] || fail "Failed to extract CNPG password from teleport-postgres-app secret"
 export CNPG_PASSWORD
 
+# ── Mirror teleport-postgres-app credentials into monitoring namespace ───────
+# Grafana runs in monitoring/ and needs access to the Teleport backend DB
+# for the Session Activity panels in teleport-identity-security. CNPG auto-
+# creates teleport-postgres-app in the teleport namespace; copy the same
+# username + password into monitoring/ as teleport-backend-grafana-creds.
+# CNPG's password rotates rarely (or never on a stable cluster); on rotation
+# this step will pick up the new value on the next `make up`.
+log "Mirroring teleport-postgres-app credentials into monitoring namespace..."
+TELEPORT_BACKEND_PG_USERNAME=$(kubectl -n teleport get secret teleport-postgres-app \
+  -o jsonpath='{.data.username}' | base64 -d)
+TELEPORT_BACKEND_PG_PASSWORD=$(kubectl -n teleport get secret teleport-postgres-app \
+  -o jsonpath='{.data.password}' | base64 -d)
+[[ -n "${TELEPORT_BACKEND_PG_USERNAME}" && -n "${TELEPORT_BACKEND_PG_PASSWORD}" ]] \
+  || fail "Failed to extract teleport-postgres-app username/password"
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: teleport-backend-grafana-creds
+  namespace: monitoring
+type: kubernetes.io/basic-auth
+stringData:
+  username: "${TELEPORT_BACKEND_PG_USERNAME}"
+  password: "${TELEPORT_BACKEND_PG_PASSWORD}"
+EOF
+
 # ── Render Teleport values (deferred: requires CNPG_PASSWORD) ─────────────────
 envsubst < "${ROOT_DIR}/helm/teleport-values.yaml.tpl" > "${TELEPORT_VALUES}"
 
