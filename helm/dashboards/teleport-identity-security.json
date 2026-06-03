@@ -19,7 +19,34 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "teleport"
+      ],
+      "targetBlank": false,
+      "title": "Other Teleport dashboards",
+      "tooltip": "",
+      "type": "dashboards",
+      "url": ""
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Teleport Access Graph \u2197",
+      "tooltip": "Open Access Graph in the Teleport Web UI",
+      "type": "link",
+      "url": "https://teleport.jwturner.dev/web/accessgraph"
+    }
+  ],
   "panels": [
     {
       "collapsed": false,
@@ -248,8 +275,16 @@
                 "value": null
               },
               {
-                "color": "red",
+                "color": "yellow",
                 "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
               }
             ]
           },
@@ -591,7 +626,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 55
       },
       "id": 102,
       "title": "User & Identity Details",
@@ -621,13 +656,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "user"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this user",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-user=${__value.raw}&var-role=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open user in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/users",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 56
       },
       "id": 10,
       "options": {
@@ -650,7 +709,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  value->>'name'                                  AS user,\n  value->'properties'->>'standing_privileges'     AS standing,\n  value->'properties'->>'identity_groups'         AS roles_count,\n  value->'properties'->>'weakest_mfa_device_kind' AS mfa,\n  value->'properties'->>'is_crown_jewel'          AS crown_jewel,\n  value->'login_status'->>'is_locked'             AS locked\nFROM nodes WHERE kind='identity' AND subkind='user'\nORDER BY (value->'properties'->>'standing_privileges')::int DESC",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  value->>'name'                                  AS user,\n  value->'properties'->>'standing_privileges'     AS standing,\n  value->'properties'->>'identity_groups'         AS roles_count,\n  value->'properties'->>'weakest_mfa_device_kind' AS mfa,\n  value->'properties'->>'is_crown_jewel'          AS crown_jewel,\n  value->'login_status'->>'is_locked'             AS locked\nFROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND ('$user' = 'All' OR value->>'name' = '$user')\nORDER BY (value->'properties'->>'standing_privileges')::int DESC",
           "refId": "A"
         }
       ],
@@ -681,13 +740,60 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "user"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this user",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-user=${__value.raw}&var-role=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open user in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/users",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 56
       },
       "id": 11,
       "options": {
@@ -710,7 +816,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT\n  u.value->>'name' AS user,\n  r.value->>'name' AS role,\n  a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values' AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nWHERE m.kind='member_of'",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT\n  u.value->>'name' AS user,\n  r.value->>'name' AS role,\n  a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values' AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nWHERE m.kind='member_of'\n  AND ('$user' = 'All' OR u.value->>'name' = '$user')\n  AND ('$role' = 'All' OR r.value->>'name' = '$role')",
           "refId": "A"
         }
       ],
@@ -741,13 +847,60 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bot"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this user",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-user=${__value.raw}&var-role=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open user in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/users",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "impersonates_role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 23
+        "y": 64
       },
       "id": 12,
       "options": {
@@ -770,7 +923,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT u.value->>'name' AS bot, r.value->>'name' AS impersonates_role\nFROM edges e\nJOIN nodes u ON u.id=e.from_node\nJOIN nodes r ON r.id=e.to_node\nWHERE e.kind='impersonator_of'",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT u.value->>'name' AS bot, r.value->>'name' AS impersonates_role\nFROM edges e\nJOIN nodes u ON u.id=e.from_node\nJOIN nodes r ON r.id=e.to_node\nWHERE e.kind='impersonator_of'\n  AND ('$user' = 'All' OR u.value->>'name' = '$user')\n  AND ('$role' = 'All' OR r.value->>'name' = '$role')",
           "refId": "A"
         }
       ],
@@ -783,7 +936,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 78
       },
       "id": 103,
       "title": "Access Request & Reviewer Topology",
@@ -813,13 +966,60 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "base_role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "can_request"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 79
       },
       "id": 13,
       "options": {
@@ -842,7 +1042,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT r1.value->>'name' AS base_role, r2.value->>'name' AS can_request\nFROM edges e\nJOIN nodes r1 ON r1.id=e.from_node\nJOIN nodes r2 ON r2.id=e.to_node\nWHERE e.kind='requester_of'\n  AND r1.value->>'name' NOT IN ('requester','okta-requester')\nORDER BY base_role, can_request",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT r1.value->>'name' AS base_role, r2.value->>'name' AS can_request\nFROM edges e\nJOIN nodes r1 ON r1.id=e.from_node\nJOIN nodes r2 ON r2.id=e.to_node\nWHERE e.kind='requester_of'\n  AND r1.value->>'name' NOT IN ('requester','okta-requester')\n  AND ('$role' = 'All' OR r1.value->>'name' = '$role' OR r2.value->>'name' = '$role')\nORDER BY base_role, can_request",
           "refId": "A"
         }
       ],
@@ -873,13 +1073,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "target_role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 79
       },
       "id": 14,
       "options": {
@@ -902,7 +1126,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT r2.value->>'name' AS target_role,\n       string_agg(DISTINCT r1.value->>'name', ', ' ORDER BY r1.value->>'name') AS reviewers\nFROM edges e\nJOIN nodes r1 ON r1.id=e.from_node\nJOIN nodes r2 ON r2.id=e.to_node\nWHERE e.kind='reviewer_of' AND r2.value->>'name' LIKE 'role-%'\nGROUP BY target_role\nORDER BY target_role",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT r2.value->>'name' AS target_role,\n       string_agg(DISTINCT r1.value->>'name', ', ' ORDER BY r1.value->>'name') AS reviewers\nFROM edges e\nJOIN nodes r1 ON r1.id=e.from_node\nJOIN nodes r2 ON r2.id=e.to_node\nWHERE e.kind='reviewer_of' AND r2.value->>'name' LIKE 'role-%'\n  AND ('$role' = 'All' OR r2.value->>'name' = '$role')\nGROUP BY target_role\nORDER BY target_role",
           "refId": "A"
         }
       ],
@@ -915,7 +1139,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 87
       },
       "id": 104,
       "title": "Resources & Blast Radius",
@@ -951,7 +1175,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 39
+        "y": 88
       },
       "id": 15,
       "options": {
@@ -1005,13 +1229,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 39
+        "y": 88
       },
       "id": 16,
       "options": {
@@ -1034,7 +1282,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT r.value->>'name' AS role, count(DISTINCT e2.to_node) AS resource_groups_granted\nFROM nodes r\nJOIN edges e1 ON e1.from_node=r.id AND e1.kind='access'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nWHERE r.kind='identity_group' AND r.subkind='role'\nGROUP BY role\nORDER BY resource_groups_granted DESC\nLIMIT 25",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT r.value->>'name' AS role, count(DISTINCT e2.to_node) AS resource_groups_granted\nFROM nodes r\nJOIN edges e1 ON e1.from_node=r.id AND e1.kind='access'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND ('$role' = 'All' OR r.value->>'name' = '$role')\nGROUP BY role\nORDER BY resource_groups_granted DESC\nLIMIT 25",
           "refId": "A"
         }
       ],
@@ -1065,13 +1313,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 39
+        "y": 88
       },
       "id": 17,
       "options": {
@@ -1094,7 +1366,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\nORDER BY role, resource_kind",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\n  AND ('$role' = 'All' OR r.value->>'name' = '$role')\nORDER BY role, resource_kind",
           "refId": "A"
         }
       ],
@@ -1107,7 +1379,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 96
       },
       "id": 105,
       "title": "Policy Hygiene",
@@ -1137,13 +1409,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 48
+        "y": 97
       },
       "id": 18,
       "options": {
@@ -1166,7 +1462,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT value->>'name' AS role,\n       value->'properties'->'teleport'->>'require_mfa_type' AS mfa,\n       value->'properties'->'teleport'->>'trusted_device'   AS trusted_device\nFROM nodes\nWHERE kind='action'\n  AND (value->'properties'->'teleport'->>'require_mfa_type' <> 'OFF'\n       OR value->'properties'->'teleport'->>'trusted_device' = 'required')\nORDER BY role",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT value->>'name' AS role,\n       value->'properties'->'teleport'->>'require_mfa_type' AS mfa,\n       value->'properties'->'teleport'->>'trusted_device'   AS trusted_device\nFROM nodes\nWHERE kind='action'\n  AND (value->'properties'->'teleport'->>'require_mfa_type' <> 'OFF'\n       OR value->'properties'->'teleport'->>'trusted_device' = 'required')\n  AND ('$role' = 'All' OR value->>'name' = '$role')\nORDER BY role",
           "refId": "A"
         }
       ],
@@ -1197,13 +1493,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "role"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this role",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-role=${__value.raw}&var-user=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open role in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 48
+        "y": 97
       },
       "id": 19,
       "options": {
@@ -1226,7 +1546,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\n  AND ('$role' = 'All' OR r.value->>'name' = '$role')\nORDER BY role",
           "refId": "A"
         }
       ],
@@ -1239,7 +1559,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 14
       },
       "id": 106,
       "title": "Security Alerts",
@@ -1269,13 +1589,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "affected_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open affected entity in Access Graph in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/accessgraph",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 27
       },
       "id": 20,
       "options": {
@@ -1329,13 +1668,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "crown_jewel_uuid"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open crown jewel in Access Graph in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/accessgraph",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 37
       },
       "id": 107,
       "options": {
@@ -1389,13 +1747,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "affected_name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open affected entity in Access Graph in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/accessgraph",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 75
+        "y": 45
       },
       "id": 108,
       "options": {
@@ -1423,6 +1800,557 @@
         }
       ],
       "title": "Recent Access Path Changes",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Alerts created per day for the last 30 days, stacked by severity. Spot bursts of new findings (e.g., a misconfigured role push) here \u2014 the table below is a snapshot, this is the trend.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "high"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "medium"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "low"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 204,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  date_trunc('day', (data->>'created_at')::timestamptz) AS time,\n  data->>'severity' AS metric,\n  count(*) AS value\nFROM security_alerts\nWHERE (data->>'created_at')::timestamptz > NOW() - INTERVAL '30 days'\nGROUP BY 1, 2\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Alert Trend (last 30 days)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Count of currently-open security alerts at severity 'critical'.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 23
+      },
+      "id": 200,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts WHERE data->>'severity' = 'critical'",
+          "refId": "A"
+        }
+      ],
+      "title": "Critical",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Count of currently-open security alerts at severity 'high'.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 23
+      },
+      "id": 201,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts WHERE data->>'severity' = 'high'",
+          "refId": "A"
+        }
+      ],
+      "title": "High",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Count of currently-open security alerts at severity 'medium'.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 23
+      },
+      "id": 202,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts WHERE data->>'severity' = 'medium'",
+          "refId": "A"
+        }
+      ],
+      "title": "Medium",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Count of currently-open security alerts at severity 'low'.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 23
+      },
+      "id": 203,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts WHERE data->>'severity' = 'low'",
+          "refId": "A"
+        }
+      ],
+      "title": "Low",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Composite risk score per user: standing_privileges + 5 if MFA is missing/NONE + 10 if user is marked as a crown jewel. Use this as a triage start \u2014 the top of this list is what to look at first.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "risk_score"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 5
+                    },
+                    {
+                      "color": "orange",
+                      "value": 15
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "user"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard to this user",
+                    "url": "/d/teleport-identity-security?${__url_time_range}&var-user=${__value.raw}&var-role=All",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open user in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/users",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 70
+      },
+      "id": 205,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  value->>'name' AS user,\n  COALESCE((value->'properties'->>'standing_privileges')::int, 0) AS standing,\n  COALESCE(value->'properties'->>'weakest_mfa_device_kind', 'NONE') AS mfa,\n  COALESCE(value->'properties'->>'is_crown_jewel', 'false') AS crown_jewel,\n  (\n    COALESCE((value->'properties'->>'standing_privileges')::int, 0)\n    + CASE WHEN COALESCE(value->'properties'->>'weakest_mfa_device_kind', 'NONE') IN ('NONE','') THEN 5 ELSE 0 END\n    + CASE WHEN value->'properties'->>'is_crown_jewel' = 'true' THEN 10 ELSE 0 END\n  ) AS risk_score\nFROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND ('$user' = 'All' OR value->>'name' = '$user')\nORDER BY risk_score DESC, standing DESC\nLIMIT 25",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Risk Users (composite score)",
       "type": "table"
     }
   ],
@@ -1466,6 +2394,56 @@
         "name": "tenant",
         "options": [],
         "query": "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY 1;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "All"
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_ACCESS_GRAPH}"
+        },
+        "definition": "SELECT 'All' UNION ALL SELECT value->>'name' FROM nodes WHERE kind='identity' AND subkind='user' ORDER BY 1;",
+        "description": "Filter the dashboard to a single user. Default 'All' shows everything. Click a user row in any table to set this.",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "user",
+        "options": [],
+        "query": "SET search_path TO ${tenant}; SELECT 'All' UNION ALL SELECT value->>'name' FROM nodes WHERE kind='identity' AND subkind='user' ORDER BY 1;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "All"
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_ACCESS_GRAPH}"
+        },
+        "definition": "SELECT 'All' UNION ALL SELECT value->>'name' FROM nodes WHERE kind='identity_group' AND subkind='role' ORDER BY 1;",
+        "description": "Filter the dashboard to a single role. Default 'All' shows everything. Click a role row in any table to set this.",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "role",
+        "options": [],
+        "query": "SET search_path TO ${tenant}; SELECT 'All' UNION ALL SELECT value->>'name' FROM nodes WHERE kind='identity_group' AND subkind='role' ORDER BY 1;",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
