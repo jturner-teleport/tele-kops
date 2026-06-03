@@ -44,7 +44,7 @@
       "title": "Teleport Access Graph \u2197",
       "tooltip": "Open Access Graph in the Teleport Web UI",
       "type": "link",
-      "url": "https://teleport.jwturner.dev/web/accessgraph"
+      "url": "${teleport_url}/web/accessgraph"
     }
   ],
   "panels": [
@@ -673,7 +673,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
+                    "url": "${teleport_url}/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -757,7 +757,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
+                    "url": "${teleport_url}/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -780,7 +780,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -864,7 +864,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
+                    "url": "${teleport_url}/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -887,7 +887,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -983,7 +983,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1006,7 +1006,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1090,7 +1090,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1181,7 +1181,7 @@
                 "value": [
                   {
                     "title": "Open resource in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/cluster/teleport.jwturner.dev/resources?search=${__value.text:percentencode}&sort=name%3Aasc&pinnedOnly=false&kinds=${__data.fields[\"ui_kind\"]}",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/resources?search=${__value.text:percentencode}&sort=name%3Aasc&pinnedOnly=false&kinds=${__data.fields[\"ui_kind\"]}",
                     "targetBlank": true
                   }
                 ]
@@ -1277,7 +1277,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1361,7 +1361,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1457,7 +1457,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1541,7 +1541,7 @@
                   },
                   {
                     "title": "Open role in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/roles",
+                    "url": "${teleport_url}/web/roles",
                     "targetBlank": true
                   }
                 ]
@@ -1632,7 +1632,7 @@
                 "value": [
                   {
                     "title": "Open affected entity in Access Graph in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/accessgraph",
+                    "url": "${teleport_url}/web/accessgraph",
                     "targetBlank": true
                   }
                 ]
@@ -1711,7 +1711,7 @@
                 "value": [
                   {
                     "title": "Open crown jewel in Access Graph \u2197",
-                    "url": "https://teleport.jwturner.dev/web/accessgraph/graph?view=access-path&node=id%3A${__value.text:percentencode}",
+                    "url": "${teleport_url}/web/accessgraph/graph?view=access-path&node=id%3A${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -1790,7 +1790,7 @@
                 "value": [
                   {
                     "title": "Open affected entity in Access Graph \u2197",
-                    "url": "https://teleport.jwturner.dev/web/accessgraph/graph?view=access-path&node=id%3A${__data.fields[\"affected_id\"]:percentencode}",
+                    "url": "${teleport_url}/web/accessgraph/graph?view=access-path&node=id%3A${__data.fields[\"affected_id\"]:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -2353,7 +2353,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
+                    "url": "${teleport_url}/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -2419,6 +2419,48 @@
         "regex": "",
         "skipUrlSync": false,
         "type": "datasource"
+      },
+      {
+        "hide": 2,
+        "name": "teleport_url",
+        "label": "Teleport Web UI base URL",
+        "description": "Base URL for deep-links into the Teleport Web UI. Override on import to point at your cluster (e.g. https://teleport.example.com).",
+        "type": "constant",
+        "query": "${TELEPORT_URL}",
+        "current": {
+          "value": "${TELEPORT_URL}",
+          "text": "${TELEPORT_URL}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${TELEPORT_URL}",
+            "text": "${TELEPORT_URL}",
+            "selected": true
+          }
+        ],
+        "skipUrlSync": false
+      },
+      {
+        "hide": 2,
+        "name": "teleport_cluster",
+        "label": "Teleport cluster name",
+        "description": "Teleport cluster name used in resource-inventory deep-link paths. Override on import to match your cluster (e.g. teleport.example.com).",
+        "type": "constant",
+        "query": "${TELEPORT_CLUSTER}",
+        "current": {
+          "value": "${TELEPORT_CLUSTER}",
+          "text": "${TELEPORT_CLUSTER}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${TELEPORT_CLUSTER}",
+            "text": "${TELEPORT_CLUSTER}",
+            "selected": true
+          }
+        ],
+        "skipUrlSync": false
       },
       {
         "allowCustomValue": false,

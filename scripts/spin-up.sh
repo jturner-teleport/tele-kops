@@ -781,7 +781,23 @@ kubectl -n monitoring label configmap grafana-dashboard-teleport grafana_dashboa
 
 # Custom dashboards (one ConfigMap per dashboard, picked up by Grafana sidecar
 # via the grafana_dashboard=1 label). Submitted to gravitational/rev-tech.
-for dash in "${ROOT_DIR}"/helm/dashboards/*.json; do
+#
+# Two-pass render: any *.json.tpl files are envsubst'd through an explicit
+# allow-list (only TELEPORT_URL and TELEPORT_CLUSTER) so Grafana's own
+# ${tenant} / ${user} / ${role} / ${DS_ACCESS_GRAPH} / ${__value...} refs
+# survive. Plain *.json files are copied through unchanged.
+DASHBOARD_RENDER_DIR="${TMPDIR_WORK}/dashboards"
+mkdir -p "${DASHBOARD_RENDER_DIR}"
+for tpl in "${ROOT_DIR}"/helm/dashboards/*.json.tpl; do
+  [[ -f "${tpl}" ]] || continue
+  OUT="${DASHBOARD_RENDER_DIR}/$(basename "${tpl}" .tpl)"
+  envsubst '${TELEPORT_URL} ${TELEPORT_CLUSTER}' < "${tpl}" > "${OUT}"
+done
+for plain in "${ROOT_DIR}"/helm/dashboards/*.json; do
+  [[ -f "${plain}" ]] || continue
+  cp "${plain}" "${DASHBOARD_RENDER_DIR}/$(basename "${plain}")"
+done
+for dash in "${DASHBOARD_RENDER_DIR}"/*.json; do
   [[ -f "${dash}" ]] || continue
   NAME="$(basename "${dash}" .json)"
   CM_NAME="grafana-dashboard-${NAME}"

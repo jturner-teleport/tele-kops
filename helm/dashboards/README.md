@@ -94,6 +94,36 @@ Requires the following metrics, which CNPG exposes when
 - `cnpg_backends_total`
 - `cnpg_pg_database_size_bytes`
 
+## Portability: `${teleport_url}` and `${teleport_cluster}` constants
+
+`teleport-identity-security.json` deep-links into the Teleport Web UI (user
+pages, role pages, Access Graph, resource search). Those URLs depend on the
+cluster being viewed, so the dashboard ships as `.json.tpl` and uses a
+layered substitution pattern:
+
+1. **Two Grafana `constant` template variables** — `teleport_url` and
+   `teleport_cluster` — drive all 18 data-link URLs and the dashboard-level
+   "Teleport Access Graph ↗" link. They are `hide: 2` (hidden from the UI),
+   but recipients can still override them through Grafana's Variables editor
+   or via URL params (`?var-teleport_url=https://their-teleport.example.com`).
+2. **Default values are envsubst placeholders.** The constants ship with
+   `${TELEPORT_URL}` and `${TELEPORT_CLUSTER}` as their defaults. When
+   `scripts/spin-up.sh` renders `helm/dashboards/*.json.tpl` it pipes them
+   through `envsubst '${TELEPORT_URL} ${TELEPORT_CLUSTER}'` — an explicit
+   allow-list so Grafana's own `${tenant}`, `${user}`, `${role}`,
+   `${DS_ACCESS_GRAPH}`, `${__value.text:percentencode}` references pass
+   through untouched. On our deploy the constants end up baked with the
+   live cluster's hostname.
+3. **Recipients without our tooling.** Anyone importing the rendered JSON
+   into their own Grafana can either edit the constants in the Variables UI
+   ("Make editable" + override `teleport_url` to e.g.
+   `https://teleport.example.com` and `teleport_cluster` to
+   `teleport.example.com`), or pass `?var-teleport_url=...&var-teleport_cluster=...`
+   in the dashboard URL. The deep-links then route to their cluster.
+
+`config.env` / `config.env.example` define both variables (defaulted from
+`TELEPORT_DOMAIN`). Nothing else in the repo currently uses them.
+
 ## How they are loaded in our cluster
 
 Grafana is installed via `kube-prometheus-stack`, whose Grafana ships with
