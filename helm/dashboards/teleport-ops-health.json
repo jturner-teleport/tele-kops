@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Teleport ops/SRE health dashboard. What would page me at 2am? Pod health, backend latency, Postgres (CNPG), audit pipeline, and resource pressure.",
+  "description": "Teleport ops/SRE health dashboard. What would page me at 2am? Pod health, backend latency, audit pipeline, and resource pressure. Backend-agnostic — see teleport-backend-cnpg.json for the Postgres-specific view if you run Teleport on CNPG.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -31,18 +31,6 @@
       "tooltip": "",
       "type": "link",
       "url": "https://goteleport.com/docs/reference/monitoring/metrics/"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": false,
-      "tags": [],
-      "targetBlank": true,
-      "title": "CNPG Monitoring",
-      "tooltip": "",
-      "type": "link",
-      "url": "https://cloudnative-pg.io/documentation/current/monitoring/"
     }
   ],
   "panels": [
