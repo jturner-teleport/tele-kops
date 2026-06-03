@@ -3247,7 +3247,12 @@
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "type": "datasource"
+        "type": "datasource",
+        "current": {
+          "selected": false,
+          "text": "Access Graph",
+          "value": "Access Graph"
+        }
       },
       {
         "allowCustomValue": false,
@@ -3261,7 +3266,12 @@
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "type": "datasource"
+        "type": "datasource",
+        "current": {
+          "selected": false,
+          "text": "Teleport Backend",
+          "value": "Teleport Backend"
+        }
       },
       {
         "hide": 2,
