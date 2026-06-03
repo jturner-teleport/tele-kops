@@ -2642,7 +2642,7 @@
         "type": "postgres",
         "uid": "${DS_TELEPORT_BACKEND}"
       },
-      "description": "High- and critical-risk session summaries in the selected time range, sorted CRITICAL > HIGH then by time DESC. The risk_level cell is color-coded; click a row's short_description to jump to the session recording player, the username to filter the dashboard / open the user in Teleport, or the server_hostname to open the resource page.\n\n**TODO:** the session recording link below uses the URL pattern `/web/cluster/<cluster>/session/<sid>`, which is unverified. Replace with the actual Teleport Web UI pattern once confirmed against a live cluster.\n\n**SQL:**\n```sql\nSELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' IN ('HIGH','CRITICAL')\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50\n```",
+      "description": "High- and critical-risk session summaries in the selected time range, sorted CRITICAL > HIGH then by time DESC. The risk_level cell is color-coded; click a row's short_description to jump to the session recording player, the username to filter the dashboard / open the user in Teleport, or the server_hostname to open the resource page.\n\n**\n\n**SQL:**\n```sql\nSELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' IN ('HIGH','CRITICAL')\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2725,8 +2725,8 @@
                 "id": "links",
                 "value": [
                   {
-                    "title": "Play session recording \u2197 (URL pattern unverified \u2014 see panel description)",
-                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/session/${__data.fields[\"sid\"]:percentencode}",
+                    "title": "Play session recording \u2197",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/session/${__data.fields[\"sid\"]:percentencode}?recordingType=${__data.fields[\"session_type\"]:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -2824,7 +2824,7 @@
         "type": "postgres",
         "uid": "${DS_TELEPORT_BACKEND}"
       },
-      "description": "All session summaries in the selected time range, sorted by risk_level (CRITICAL first) then by time DESC. Same column layout and links as the High & Critical table above; this view drops the risk filter so analysts can scan everything that happened.\n\n**TODO:** the session recording link below uses the URL pattern `/web/cluster/<cluster>/session/<sid>`, which is unverified. Replace with the actual Teleport Web UI pattern once confirmed against a live cluster.\n\n**SQL:**\n```sql\nSELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50\n```",
+      "description": "All session summaries in the selected time range, sorted by risk_level (CRITICAL first) then by time DESC. Same column layout and links as the High & Critical table above; this view drops the risk filter so analysts can scan everything that happened.\n\n**\n\n**SQL:**\n```sql\nSELECT\n  event_time AS time,\n  event_data->>'username' AS username,\n  event_data->>'session_type' AS session_type,\n  event_data->>'server_hostname' AS server_hostname,\n  event_data->>'risk_level' AS risk_level,\n  (event_data->>'success')::bool AS success,\n  event_data->>'short_description' AS short_description,\n  event_data->>'sid' AS sid\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')\nORDER BY\n  CASE event_data->>'risk_level' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 ELSE 3 END,\n  event_time DESC\nLIMIT 50\n```",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2907,8 +2907,8 @@
                 "id": "links",
                 "value": [
                   {
-                    "title": "Play session recording \u2197 (URL pattern unverified \u2014 see panel description)",
-                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/session/${__data.fields[\"sid\"]:percentencode}",
+                    "title": "Play session recording \u2197",
+                    "url": "${teleport_url}/web/cluster/${teleport_cluster}/session/${__data.fields[\"sid\"]:percentencode}?recordingType=${__data.fields[\"session_type\"]:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -3324,7 +3324,7 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-30d",
     "to": "now"
   },
   "timepicker": {
