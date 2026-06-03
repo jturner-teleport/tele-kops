@@ -2428,7 +2428,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
+        "w": 4,
         "x": 0,
         "y": 56
       },
@@ -2485,8 +2485,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 6,
+        "w": 4,
+        "x": 4,
         "y": 56
       },
       "id": 221,
@@ -2542,8 +2542,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 12,
+        "w": 4,
+        "x": 8,
         "y": 56
       },
       "id": 222,
@@ -2599,8 +2599,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 18,
+        "w": 4,
+        "x": 12,
         "y": 56
       },
       "id": 223,
@@ -3167,6 +3167,63 @@
       ],
       "title": "Session Activity Trend (last 30 days)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Count of session.summarized events at risk_level 'UNSPECIFIED' within the dashboard time range. UNSPECIFIED is the default when the AI did not assign a higher risk level \u2014 typically benign sessions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "gray"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 16,
+        "y": 56
+      },
+      "id": 227,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::int\nFROM events\nWHERE event_type = 'session.summarized'\n  AND event_data->>'risk_level' = 'UNSPECIFIED'\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND ('$user' = 'All' OR event_data->>'username' = '$user')",
+          "refId": "A"
+        }
+      ],
+      "title": "Unspecified",
+      "type": "stat"
     }
   ],
   "refresh": "5m",
