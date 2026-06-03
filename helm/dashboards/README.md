@@ -1,6 +1,6 @@
 # Teleport Grafana Dashboards (rev-tech)
 
-Three Grafana dashboards for self-hosted Teleport (v18.x) when scraped by
+Five Grafana dashboards for self-hosted Teleport (v18.x) when scraped by
 kube-prometheus-stack. Templated on `$datasource`, `$namespace`, and
 `$teleport_job` (derived from `label_values(teleport_build_info, job)`) so they
 work against any cluster — `teleport`, `teleport-auth`, `teleport-proxy`, etc.
@@ -11,6 +11,8 @@ work against any cluster — `teleport`, `teleport-auth`, `teleport-proxy`, etc.
 | `teleport-ops-health.json` | `rev-tech-teleport-ops-health` | 30s | last 1h |
 | `teleport-identity.json` | `rev-tech-teleport-identity` | 1m | last 24h |
 | `teleport-overview.json` | `rev-tech-teleport-overview` | 30s | last 1h |
+| `teleport-identity-security.json` | `teleport-identity-security` | — | — |
+| `teleport-backend-cnpg.json` | `teleport-backend-cnpg` | 30s | last 1h |
 
 All dashboards are tagged `teleport`, `rev-tech` and use `schemaVersion: 39`.
 
@@ -19,17 +21,21 @@ All dashboards are tagged `teleport`, `rev-tech` and use `schemaVersion: 39`.
 ### `teleport-ops-health.json` — Ops Health
 
 Audience: SREs / Ops running self-hosted Teleport in production. The "what
-would page me at 2am?" board. Twelve panels grouped into four rows:
+would page me at 2am?" board. Backend-agnostic — every query relies only on
+Teleport-emitted metrics plus K8s pod metrics, so it works regardless of
+which backend (Postgres, DynamoDB, etcd, Firestore, SQLite) is in use.
+Panels grouped into rows:
 
 - **Cluster Health** — fraction of `up{}` targets, pod restart count (1h table).
 - **Backend Performance** — P50/P95/P99 read & write latency from
   `backend_read_seconds_bucket` / `backend_write_seconds_bucket`, plus combined
   read/write ops-per-second.
-- **Postgres (CNPG)** — replication lag (gauge, alert >10s), active backends
-  per pod, and on-disk size of the `teleport` and `access_graph` databases.
 - **Audit Pipeline** — emission rate (with failed-emit overlay) and 1h totals
   for `audit_failed_emit_events` and `teleport_incomplete_session_uploads_total`.
 - **Resource Pressure** — per-pod CPU and memory from cAdvisor.
+
+For CNPG-Postgres-specific backend health (replication lag, connection
+count, database size) pair this with `teleport-backend-cnpg.json` below.
 
 ### `teleport-identity.json` — Identity & Access
 
@@ -58,6 +64,35 @@ single-stat / gauge tiles only, all background-coloured by threshold:
   the last hour (red at >0).
 - Average CPU (gauge, orange/red at 0.5 / 0.9 cores) and average memory
   across teleport pods.
+
+### `teleport-backend-cnpg.json` — Backend (CNPG Postgres)
+
+Audience: SREs running Teleport on the [CloudNativePG](https://cloudnative-pg.io/)
+Postgres backend. Three panels covering the Postgres-side health signals
+that complement the backend-agnostic latency/ops panels in
+`teleport-ops-health.json`:
+
+- **Postgres Replication Lag** — gauge over `cnpg_pg_replication_lag`,
+  green/orange/red at 0 / 5s / 10s. Sustained lag above 10s warrants a
+  pager.
+- **Postgres Active Connections** — `sum by (state) (cnpg_backends_total)`
+  to watch for connection-count blowups (idle-in-transaction storms,
+  leaked clients, etc).
+- **Postgres Database Size** — `cnpg_pg_database_size_bytes` for the
+  `teleport` and `access_graph` databases over time.
+
+**Backend-specific.** This dashboard is intentionally scoped to CNPG.
+Recipients running Teleport on a different backend (DynamoDB, RDS,
+Firestore, etcd, …) should ignore or delete it and pair
+`teleport-ops-health.json` with their backend vendor's own observability
+(AWS CloudWatch RDS / DynamoDB dashboards, etc).
+
+Requires the following metrics, which CNPG exposes when
+`spec.monitoring.enablePodMonitor: true` is set on the `Cluster` CR:
+
+- `cnpg_pg_replication_lag`
+- `cnpg_backends_total`
+- `cnpg_pg_database_size_bytes`
 
 ## How they are loaded in our cluster
 
