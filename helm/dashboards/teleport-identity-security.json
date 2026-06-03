@@ -673,7 +673,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users",
+                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -757,7 +757,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users",
+                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -864,7 +864,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users",
+                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -1679,8 +1679,8 @@
                 "id": "links",
                 "value": [
                   {
-                    "title": "Open crown jewel in Access Graph in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/accessgraph",
+                    "title": "Open crown jewel in Access Graph \u2197",
+                    "url": "https://teleport.jwturner.dev/web/accessgraph/graph?view=access-path&node=id%3A${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
@@ -1758,11 +1758,23 @@
                 "id": "links",
                 "value": [
                   {
-                    "title": "Open affected entity in Access Graph in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/accessgraph",
+                    "title": "Open affected entity in Access Graph \u2197",
+                    "url": "https://teleport.jwturner.dev/web/accessgraph/graph?view=access-path&node=id%3A${__data.fields[\"affected_id\"]:percentencode}",
                     "targetBlank": true
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "affected_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
               }
             ]
           }
@@ -1795,7 +1807,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\n-- Recent structural changes in the access graph (role mods, membership\n-- changes, permission grants/revokes). Surface a daily activity log for\n-- the analyst \u2014 pivot here when investigating \"what changed and when.\"\nSELECT\n  created_at,\n  COALESCE(NULLIF(author,''), '<system>') AS author,\n  affected_kind,\n  affected_name,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.edges.*'), '[]'::jsonb)) AS edges_changed,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.nodes.*'), '[]'::jsonb)) AS nodes_changed\nFROM access_path_changes\nORDER BY created_at DESC\nLIMIT 50",
+          "rawSql": "SET search_path TO ${tenant};\n-- Recent structural changes in the access graph (role mods, membership\n-- changes, permission grants/revokes). Surface a daily activity log for\n-- the analyst \u2014 pivot here when investigating \"what changed and when.\"\nSELECT\n  created_at,\n  COALESCE(NULLIF(author,''), '<system>') AS author,\n  affected_kind,\n  affected_name,\n  affected_id,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.edges.*'), '[]'::jsonb)) AS edges_changed,\n  jsonb_array_length(COALESCE(jsonb_path_query_array(diff,'$.nodes.*'), '[]'::jsonb)) AS nodes_changed\nFROM access_path_changes\nORDER BY created_at DESC\nLIMIT 50",
           "refId": "A"
         }
       ],
@@ -2310,7 +2322,7 @@
                   },
                   {
                     "title": "Open user in Teleport \u2197",
-                    "url": "https://teleport.jwturner.dev/web/users",
+                    "url": "https://teleport.jwturner.dev/web/users?user=${__value.text:percentencode}",
                     "targetBlank": true
                   }
                 ]
