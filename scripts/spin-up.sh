@@ -712,6 +712,32 @@ CNPG_PASSWORD=$(kubectl -n teleport get secret teleport-postgres-app \
 [[ -n "${CNPG_PASSWORD}" ]] || fail "Failed to extract CNPG password from teleport-postgres-app secret"
 export CNPG_PASSWORD
 
+# ── Mirror teleport-postgres-app credentials into monitoring namespace ───────
+# Grafana runs in monitoring/ and needs access to the Teleport backend DB
+# for the Session Activity panels in teleport-identity-security. CNPG auto-
+# creates teleport-postgres-app in the teleport namespace; copy the same
+# username + password into monitoring/ as teleport-backend-grafana-creds.
+# CNPG's password rotates rarely (or never on a stable cluster); on rotation
+# this step will pick up the new value on the next `make up`.
+log "Mirroring teleport-postgres-app credentials into monitoring namespace..."
+TELEPORT_BACKEND_PG_USERNAME=$(kubectl -n teleport get secret teleport-postgres-app \
+  -o jsonpath='{.data.username}' | base64 -d)
+TELEPORT_BACKEND_PG_PASSWORD=$(kubectl -n teleport get secret teleport-postgres-app \
+  -o jsonpath='{.data.password}' | base64 -d)
+[[ -n "${TELEPORT_BACKEND_PG_USERNAME}" && -n "${TELEPORT_BACKEND_PG_PASSWORD}" ]] \
+  || fail "Failed to extract teleport-postgres-app username/password"
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: teleport-backend-grafana-creds
+  namespace: monitoring
+type: kubernetes.io/basic-auth
+stringData:
+  username: "${TELEPORT_BACKEND_PG_USERNAME}"
+  password: "${TELEPORT_BACKEND_PG_PASSWORD}"
+EOF
+
 # ── Render Teleport values (deferred: requires CNPG_PASSWORD) ─────────────────
 envsubst < "${ROOT_DIR}/helm/teleport-values.yaml.tpl" > "${TELEPORT_VALUES}"
 
@@ -793,7 +819,23 @@ kubectl -n monitoring label configmap grafana-dashboard-teleport grafana_dashboa
 
 # Custom dashboards (one ConfigMap per dashboard, picked up by Grafana sidecar
 # via the grafana_dashboard=1 label). Submitted to gravitational/rev-tech.
-for dash in "${ROOT_DIR}"/helm/dashboards/*.json; do
+#
+# Two-pass render: any *.json.tpl files are envsubst'd through an explicit
+# allow-list (only TELEPORT_URL and TELEPORT_CLUSTER) so Grafana's own
+# ${tenant} / ${user} / ${role} / ${DS_ACCESS_GRAPH} / ${__value...} refs
+# survive. Plain *.json files are copied through unchanged.
+DASHBOARD_RENDER_DIR="${TMPDIR_WORK}/dashboards"
+mkdir -p "${DASHBOARD_RENDER_DIR}"
+for tpl in "${ROOT_DIR}"/helm/dashboards/*.json.tpl; do
+  [[ -f "${tpl}" ]] || continue
+  OUT="${DASHBOARD_RENDER_DIR}/$(basename "${tpl}" .tpl)"
+  envsubst '${TELEPORT_URL} ${TELEPORT_CLUSTER}' < "${tpl}" > "${OUT}"
+done
+for plain in "${ROOT_DIR}"/helm/dashboards/*.json; do
+  [[ -f "${plain}" ]] || continue
+  cp "${plain}" "${DASHBOARD_RENDER_DIR}/$(basename "${plain}")"
+done
+for dash in "${DASHBOARD_RENDER_DIR}"/*.json; do
   [[ -f "${dash}" ]] || continue
   NAME="$(basename "${dash}" .json)"
   CM_NAME="grafana-dashboard-${NAME}"
