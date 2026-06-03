@@ -1169,7 +1169,38 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open resource in Teleport \u2197",
+                    "url": "https://teleport.jwturner.dev/web/cluster/teleport.jwturner.dev/resources?search=${__value.text:percentencode}&sort=name%3Aasc&pinnedOnly=false&kinds=${__data.fields[\"ui_kind\"]}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ui_kind"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -1198,7 +1229,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SET search_path TO ${tenant};\nSELECT subkind AS kind, value->>'name' AS name, value->'labels' AS labels\nFROM nodes WHERE kind='resource' ORDER BY subkind, name",
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  subkind AS kind,\n  value->>'name' AS name,\n  value->'labels' AS labels,\n  CASE subkind\n    WHEN 'ssh'             THEN 'node'\n    WHEN 'kubernetes'      THEN 'kube_cluster'\n    WHEN 'app'             THEN 'app'\n    WHEN 'db'              THEN 'db'\n    WHEN 'windows_desktop' THEN 'windows_desktop'\n    ELSE subkind\n  END AS ui_kind\nFROM nodes\nWHERE kind='resource'\nORDER BY subkind, name",
           "refId": "A"
         }
       ],
