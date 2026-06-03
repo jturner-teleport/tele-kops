@@ -70,9 +70,8 @@ single-stat / gauge tiles only, all background-coloured by threshold:
 Audience: Security analysts. Pivots off the Teleport Access Graph plus the
 Teleport audit-event stream to answer "who has what, what's risky, and what
 just happened." Rows include Summary, Risk Indicators, Security Alerts,
-Recent Access Path Changes, **Session Activity** (new), User & Identity
-Details, Access Request & Reviewer Topology, Resources & Blast Radius, and
-Policy Hygiene.
+**Session Activity**, User & Identity Details, Access Request & Reviewer
+Topology, Resources & Blast Radius, and Policy Hygiene.
 
 The Session Activity row surfaces Teleport's AI-generated
 `session.summarized` audit events (risk_level + short_description per
@@ -107,6 +106,9 @@ audit-event storage the cluster uses and this dashboard only queries
 Postgres. Those users should hide the row (collapse it) or drop the
 datasource — the rest of the dashboard continues to work on the Access
 Graph datasource alone.
+
+Requires Teleport 17.0+ (when `session.summarized` audit events were
+introduced). On older versions the Session Activity panels will be empty.
 
 ### `teleport-backend-cnpg.json` — Backend (CNPG Postgres)
 
